@@ -1,0 +1,125 @@
+/* ===== TRUSTNEST RESPONSIVE STYLES ===== */
+
+/* Large Desktops (≥ 1280px) */
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+/* Small Laptops & Tablets Landscape (≤ 1024px) */
+@media (max-width: 1024px) {
+  html {
+    font-size: 15px; /* Slightly smaller base font */
+  }
+
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Adjust hero spacing */
+  .py-24 {
+    padding-top: var(--space-16);
+    padding-bottom: var(--space-16);
+  }
+}
+
+/* Tablets Portrait & Large Phones (≤ 768px) */
+@media (max-width: 768px) {
+  .grid-cols-3, .grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  /* Navbar adjustments */
+  .nav-links {
+    display: none; /* Hide desktop links */
+  }
+
+  /* Hamburger Menu visible */
+  .nav-hamburger {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+  
+  .nav-hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: var(--gray-800);
+    border-radius: 2px;
+    transition: all var(--transition-normal);
+  }
+
+  [data-theme="dark"] .nav-hamburger span {
+    background-color: white;
+  }
+
+  /* Mobile Menu Overlay */
+  .mobile-menu {
+    position: fixed;
+    top: 80px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 80px);
+    background: var(--card-bg);
+    z-index: 999;
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+  }
+
+  .mobile-menu.open {
+    transform: translateX(0);
+  }
+  
+  .mobile-nav-link {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  
+  [data-theme="dark"] .mobile-nav-link {
+    color: white;
+    border-bottom-color: var(--gray-200);
+  }
+
+  /* Hero search card stack */
+  .hero-search-card {
+    flex-direction: column;
+  }
+  
+  .hero-search-card .input-group {
+    width: 100%;
+  }
+}
+
+/* Small Phones (≤ 480px) */
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .container {
+    padding: 0 var(--space-4);
+  }
+
+  .btn {
+    width: 100%;
+  }
+  
+  .nav-logo-text {
+    display: none; /* Icon only on very small screens */
+  }
+}

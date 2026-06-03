@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrustNest — Find Premium PGs in Pune</title>
+<meta name="description" content="Discover verified, inspected PG accommodations across Pune. Real Google Maps, live availability, food ratings, and zero brokerage.">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS (real map, no API key needed) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Primary: #0F172A (Deep Navy)
+   Secondary: #2563EB (Premium Blue)
+   Accent: #F59E0B (Luxury Gold)
+   Success: #10B981 (Emerald)
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:     #0F172A;
+  --navy-2:   #1E293B;
+  --navy-3:   #334155;
+  --blue:     #2563EB;
+  --blue-h:   #1D4ED8;
+  --blue-lt:  #DBEAFE;
+  --gold:     #F59E0B;
+  --gold-h:   #D97706;
+  --gold-lt:  #FEF3C7;
+  --green:    #10B981;
+  --green-lt: #D1FAE5;
+  --red:      #EF4444;
+  --red-lt:   #FEE2E2;
+  --gray-50:  #F8FAFC;
+  --gray-100: #F1F5F9;
+  --gray-200: #E2E8F0;
+  --gray-300: #CBD5E1;
+  --gray-400: #94A3B8;
+  --gray-500: #64748B;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1E293B;
+  --gray-900: #0F172A;
+  --white: #FFFFFF;
+  --bg: #F8FAFC;
+  --card: #FFFFFF;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.08);
+  --shadow-md: 0 4px 16px rgba(15,23,42,.1);
+  --shadow-lg: 0 12px 40px rgba(15,23,42,.12);
+  --shadow-xl: 0 24px 64px rgba(15,23,42,.15);
+  --shadow-blue: 0 8px 32px rgba(37,99,235,.3);
+  --shadow-gold: 0 8px 32px rgba(245,158,11,.35);
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px; --r-2xl: 28px; --r-full: 9999px;
+  --ease: cubic-bezier(.4,0,.2,1);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--gray-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 99px; }
+
+/* ============ NAVBAR ============ */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  height: 72px;
+  display: flex; align-items: center;
+  padding: 0 32px;
+  background: rgba(15,23,42,0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  transition: all .3s var(--ease);
+}
+.navbar.scrolled { box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+
+.nav-brand {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+  font-size: 22px; font-weight: 800; letter-spacing: -.5px;
+  color: var(--white);
+  flex-shrink: 0;
+}
+.nav-brand-icon {
+  width: 38px; height: 38px;
+  background: var(--blue);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-brand span { color: var(--gold); }
+
+.nav-links {
+  display: flex; align-items: center; gap: 2px;
+  margin: 0 auto; list-style: none;
+}
+.nav-links a {
+  text-decoration: none;
+  color: rgba(255,255,255,.6);
+  font-size: 14px; font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  transition: all .2s var(--ease);
+}
+.nav-links a:hover { color: var(--white); background: rgba(255,255,255,.06); }
+
+.nav-actions { display: flex; align-items: center; gap: 10px; }
+
+.btn-nav-outline {
+  padding: 8px 18px;
+  border: 1.5px solid rgba(255,255,255,.2);
+  border-radius: var(--r-full);
+  color: white; background: transparent;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: all .2s var(--ease);
+}
+.btn-nav-outline:hover { border-color: var(--blue); background: var(--blue); }
+
+.btn-nav-primary {
+  padding: 9px 22px;
+  background: var(--gold);
+  border: none; border-radius: var(--r-full);
+  color: var(--navy); font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all .2s var(--ease);
+  box-shadow: var(--shadow-gold);
+}
+.btn-nav-primary:hover { background: var(--gold-h); transform: translateY(-1px); }
+
+/* ============ HERO ============ */
+.hero {
+  min-height: 100vh;
+  background: linear-gradient(145deg, var(--navy) 0%, #0d1f3c 45%, #091428 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 100px 24px 60px;
+  position: relative; overflow: hidden;
+  text-align: center;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(37,99,235,.18) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(245,158,11,.12) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(16,185,129,.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+.hero-content { position: relative; z-index: 2; max-width: 900px; width: 100%; }
+
+.hero-live-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 18px;
+  background: rgba(16,185,129,.15);
+  border: 1px solid rgba(16,185,129,.3);
+  border-radius: var(--r-full);
+  color: var(--green);
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .8px;
+  margin-bottom: 28px;
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-anim 2s infinite;
+}
+@keyframes pulse-anim {
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.4);opacity:.7}
+}
+
+.hero-title {
+  font-size: clamp(38px, 6vw, 72px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  color: var(--white);
+  margin-bottom: 20px;
+}
+.hero-title .accent { color: var(--gold); }
+.hero-title .blue { color: var(--blue-lt); }
+
+.hero-sub {
+  font-size: 18px; color: rgba(255,255,255,.55);
+  max-width: 560px; margin: 0 auto 44px; line-height: 1.7;
+}
+
+/* Search Card */
+.search-card {
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--r-2xl);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  max-width: 780px; margin: 0 auto 36px;
+  box-shadow: 0 32px 64px rgba(0,0,0,.4);
+}
+.search-field {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--r-xl);
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 10px;
+  transition: all .2s var(--ease);
+}
+.search-field:focus-within {
+  background: rgba(255,255,255,.12);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.25);
+}
+.search-field-icon { color: var(--gold); flex-shrink: 0; }
+.search-field-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: .8px; }
+.search-field input, .search-field select {
+  background: transparent; border: none; outline: none;
+  color: white; font-size: 14px; font-weight: 500;
+  font-family: inherit; width: 100%;
+}
+.search-field select option { background: var(--navy-2); color: white; }
+.search-field input::placeholder { color: rgba(255,255,255,.35); }
+
+.btn-search {
+  background: linear-gradient(135deg, var(--blue), var(--blue-h));
+  color: white; border: none;
+  border-radius: var(--r-xl);
+  padding: 14px 32px;
+  font-size: 15px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: all .25s var(--ease);
+  box-shadow: var(--shadow-blue);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.btn-search:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(37,99,235,.5); }
+
+/* Hero Stats */
+.hero-stats {
+  display: flex; align-items: center; justify-content: center; gap: 48px;
+}
+.hero-stat { text-align: center; }
+.hero-stat-num {
+  font-size: 36px; font-weight: 900;
+  color: var(--white); letter-spacing: -1px; line-height: 1;
+  margin-bottom: 4px;
+}
+.hero-stat-num.gold { color: var(--gold); }
+.hero-stat-num.blue { color: var(--blue-lt); }
+.hero-stat-label {
+  font-size: 12px; font-weight: 600;
+  color: rgba(255,255,255,.4);
+  text-transform: uppercase; letter-spacing: .8px;
+}
+.hero-stat-divider { width: 1px; height: 48px; background: rgba(255,255,255,.1); }
+
+/* ============ FILTER BAR ============ */
+.filter-bar {
+  background: var(--card);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0 24px;
+  position: sticky; top: 72px; z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+.filter-bar-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-bar-inner::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--gray-200);
+  background: var(--card);
+  color: var(--gray-600);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  transition: all .2s var(--ease);
+  white-space: nowrap; flex-shrink: 0;
+}
+.filter-chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-lt); }
+.filter-chip.active { border-color: var(--blue); background: var(--blue); color: white; box-shadow: var(--shadow-blue); }
+.filter-chip.active-gold { border-color: var(--gold); background: var(--gold); color: var(--navy); }
+
+.results-counter {
+  margin-left: auto; flex-shrink: 0;
+  font-size: 13px; font-weight: 700; color: var(--gray-700);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.results-counter .highlight { color: var(--blue); }
+
+/* ============ SPLIT LAYOUT: MAP + LISTINGS ============ */
+.explore-layout {
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  height: calc(100vh - 72px - 57px);
+  position: sticky;
+  top: calc(72px + 57px);
+}
+
+/* MAP PANEL */
+.map-panel { position: relative; }
+#pg-map { width: 100%; height: 100%; }
+
+/* Map search overlay */
+.map-search-overlay {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; width: 340px;
+  background: white;
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--gray-200);
+  display: flex; align-items: center;
+  padding: 10px 16px; gap: 10px;
+}
+.map-search-overlay input {
+  border: none; outline: none;
+  font-family: inherit; font-size: 14px; font-weight: 500;
+  width: 100%; color: var(--gray-800);
+}
+.map-search-overlay input::placeholder { color: var(--gray-400); }
+
+/* Map Legend */
+.map-legend {
+  position: absolute; bottom: 20px; left: 16px; z-index: 1000;
+  background: rgba(15,23,42,.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--r-lg);
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,.8);
+}
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+/* LISTINGS PANEL */
+.listings-panel {
+  background: var(--bg);
+  overflow-y: auto;
+  border-left: 1px solid var(--gray-200);
+}
+.listings-header {
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--card);
+  position: sticky; top: 0; z-index: 10;
+}
+.listings-count { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+.listings-count span { color: var(--blue); }
+
+.sort-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; background: var(--gray-100);
+  border: none; border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 600; color: var(--gray-600);
+  cursor: pointer; font-family: inherit;
+  transition: all .2s var(--ease);
+}
+.sort-btn:hover { background: var(--gray-200); color: var(--gray-900); }
+
+.listings-grid { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ============ PG CARD ============ */
+.pg-card {
+  background: var(--card);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all .3s var(--ease);
+  cursor: pointer;
+  display: flex;
+}
+.pg-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--blue); }
+.pg-card.highlighted {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.2), var(--shadow-lg);
+}
+
+.pg-card-img-wrap {
+  width: 160px; min-height: 160px; flex-shrink: 0;
+  position: relative; overflow: hidden;
+}
+.pg-card-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .5s var(--ease);
+}
+.pg-card:hover .pg-card-img { transform: scale(1.06); }
+
+/* Color placeholder images */
+.pg-img-1 { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+.pg-img-2 { background: linear-gradient(135deg, #065f46 0%, #10b981 100%); }
+.pg-img-3 { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); }
+.pg-img-4 { background: linear-gradient(135deg, #9d174d 0%, #ec4899 100%); }
+.pg-img-5 { background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%); }
+.pg-img-6 { background: linear-gradient(135deg, #0f172a 0%, #475569 100%); }
+
+.pg-img-icon {
+  width: 100%; height: 100%; min-height: 160px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.pg-gender-tag {
+  position: absolute; top: 8px; left: 8px;
+  padding: 3px 8px; border-radius: var(--r-full);
+  font-size: 10px; font-weight: 700;
+}
+.tag-boys { background: rgba(37,99,235,.9); color: white; }
+.tag-girls { background: rgba(236,72,153,.9); color: white; }
+.tag-unisex { background: rgba(124,58,237,.9); color: white; }
+
+.pg-verified-tag {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(15,23,42,.85);
+  backdrop-filter: blur(4px);
+  color: var(--green);
+  font-size: 9px; font-weight: 700;
+  padding: 3px 7px; border-radius: var(--r-full);
+  display: flex; align-items: center; gap: 3px;
+  border: 1px solid rgba(16,185,129,.3);
+}
+
+.pg-card-body { padding: 14px 16px; flex: 1; min-width: 0; }
+
+.pg-card-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.pg-name {
+  font-size: 15px; font-weight: 800;
+  color: var(--gray-900); letter-spacing: -.2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 200px;
+}
+.pg-fav-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1.5px solid var(--gray-200);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-400); cursor: pointer;
+  transition: all .2s var(--ease); flex-shrink: 0;
+}
+.pg-fav-btn:hover { border-color: var(--red); color: var(--red); }
+.pg-fav-btn.active { border-color: var(--red); background: var(--red); color: white; }
+
+.pg-location {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--gray-500); margin-bottom: 10px;
+}
+
+.pg-scores {
+  display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.score-badge {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: var(--r-sm);
+  font-size: 11px; font-weight: 700;
+}
+.score-food { background: var(--gold-lt); color: #92400e; }
+.score-hygiene { background: var(--green-lt); color: #065f46; }
+.score-beds { background: var(--blue-lt); color: #1e40af; }
+
+.pg-amenities {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.amenity-tag {
+  padding: 2px 8px; border-radius: var(--r-sm);
+  background: var(--gray-100); color: var(--gray-600);
+  font-size: 10px; font-weight: 600;
+}
+
+.pg-card-bottom {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 10px; border-top: 1px solid var(--gray-100);
+}
+.pg-price-wrap { display: flex; flex-direction: column; }
+.pg-price {
+  font-size: 20px; font-weight: 900;
+  color: var(--blue); letter-spacing: -.5px; line-height: 1;
+}
+.pg-price-label { font-size: 10px; color: var(--gray-400); font-weight: 500; margin-top: 1px; }
+
+.btn-view {
+  background: var(--blue);
+  color: white; border: none;
+  border-radius: var(--r-md); padding: 8px 14px;
+  font-size: 12px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: all .2s var(--ease);
+  white-space: nowrap;
+}
+.btn-view:hover { background: var(--blue-h); transform: translateY(-1px); box-shadow: var(--shadow-blue); }
+
+/* ============ CUSTOM MAP MARKERS ============ */
+.price-marker {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 800;
+  border: 2px solid white;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  cursor: pointer;
+  transition: all .2s ease;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  position: relative;
+}
+.price-marker::after {
+  content: '';
+  position: absolute;
+  bottom: -8px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+.price-marker.budget { background: #10b981; color: white; }
+.price-marker.budget::after { border-top: 8px solid #10b981; }
+.price-marker.premium { background: #2563eb; color: white; }
+.price-marker.premium::after { border-top: 8px solid #2563eb; }
+.price-marker.luxury { background: #f59e0b; color: #0f172a; }
+.price-marker.luxury::after { border-top: 8px solid #f59e0b; }
+.price-marker.limited { background: #ef4444; color: white; }
+.price-marker.limited::after { border-top: 8px solid #ef4444; }
+.price-marker.active { transform: scale(1.15); z-index: 1000 !important; }
+
+/* Map Popup */
+.map-popup {
+  width: 260px; padding: 0;
+}
+.popup-img {
+  height: 120px; width: 100%;
+  border-radius: 8px 8px 0 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.popup-body { padding: 12px; }
+.popup-name { font-size: 14px; font-weight: 800; color: var(--gray-900); margin-bottom: 3px; }
+.popup-area { font-size: 11px; color: var(--gray-500); margin-bottom: 8px; }
+.popup-stats { display: flex; gap: 8px; margin-bottom: 10px; }
+.popup-stat {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 7px; border-radius: 6px;
+}
+.popup-price { font-size: 18px; font-weight: 900; color: var(--blue); }
+.popup-btn {
+  width: 100%; padding: 9px;
+  background: var(--blue); color: white; border: none;
+  border-radius: 8px; font-size: 13px; font-weight: 700;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  margin-top: 4px;
+}
+.popup-btn:hover { background: var(--blue-h); }
+
+.leaflet-popup-content-wrapper { border-radius: 12px !important; padding: 0 !important; overflow: hidden; box-shadow: var(--shadow-xl) !important; }
+.leaflet-popup-content { margin: 0 !important; width: 260px !important; }
+.leaflet-popup-tip-container { display: none; }
+
+/* ============ BELOW-FOLD SECTIONS ============ */
+.section-block { padding: 80px 24px; }
+.section-inner { max-width: 1200px; margin: 0 auto; }
+.section-eyebrow {
+  font-size: 12px; font-weight: 700;
+  color: var(--blue); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 12px;
+}
+.section-title {
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 800; color: var(--gray-900);
+  letter-spacing: -1px; line-height: 1.15; margin-bottom: 16px;
+}
+.section-sub { font-size: 17px; color: var(--gray-500); max-width: 560px; }
+
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 56px;
+}
+.feature-card {
+  background: var(--card); border-radius: var(--r-xl);
+  padding: 32px; border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  transition: all .3s var(--ease);
+}
+.feature-card:hover {
+  transform: translateY(-6px); box-shadow: var(--shadow-lg);
+  border-color: var(--blue);
+}
+.feature-icon {
+  width: 56px; height: 56px;
+  border-radius: var(--r-xl); margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+}
+.icon-blue { background: var(--blue-lt); }
+.icon-gold { background: var(--gold-lt); }
+.icon-green { background: var(--green-lt); }
+.feature-card h3 { font-size: 18px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+.feature-card p { font-size: 14px; color: var(--gray-500); line-height: 1.7; }
+
+/* Stats Section */
+.stats-section {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+  padding: 64px 24px;
+}
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 24px; max-width: 960px; margin: 0 auto; text-align: center; }
+.stat-val { font-size: clamp(32px,4vw,52px); font-weight: 900; color: white; letter-spacing: -1.5px; line-height: 1; margin-bottom: 6px; }
+.stat-val.s-gold { color: var(--gold); }
+.stat-lbl { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .8px; }
+
+/* Footer */
+.footer { background: var(--navy); padding: 64px 24px 32px; }
+.footer-inner { max-width: 1200px; margin: 0 auto; }
+.footer-grid {
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 48px; padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  margin-bottom: 32px;
+}
+.footer-brand-name { font-size: 20px; font-weight: 800; color: white; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.footer-tagline { font-size: 14px; color: rgba(255,255,255,.4); line-height: 1.7; max-width: 220px; }
+.footer-col-head { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-links a { font-size: 14px; color: rgba(255,255,255,.45); text-decoration: none; transition: color .2s; }
+.footer-links a:hover { color: var(--gold); }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,.25); }
+.footer-bottom a { color: rgba(255,255,255,.25); text-decoration: none; }
+.footer-bottom a:hover { color: rgba(255,255,255,.5); }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { opacity: 0; transform: translateY(28px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+.fade-up.visible { opacity: 1; transform: translateY(0); }
+
+/* Skeleton */
+.skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .explore-layout { grid-template-columns: 1fr; height: auto; }
+  .map-panel { height: 400px; position: relative; top: 0; }
+  .listings-panel { height: auto; }
+  .feature-grid { grid-template-columns: repeat(2,1fr); }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .btn-nav-primary { display: none; }
+  .search-card { grid-template-columns: 1fr; }
+  .hero-stats { gap: 24px; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
+}
+@media (max-width: 480px) {
+  .navbar { padding: 0 16px; }
+  .hero { padding: 100px 16px 48px; }
+  .hero-stats { flex-wrap: wrap; }
+  .hero-stat-divider { display: none; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .footer-grid { grid-template-columns: 1fr; }
+  .pg-card { flex-direction: column; }
+  .pg-card-img-wrap { width: 100%; height: 180px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ NAVBAR ═══════ -->
+<nav class="navbar" id="navbar">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-brand-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    Trust<span>Nest</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#explore">Explore PGs</a></li>
+    <li><a href="#features">Why TrustNest</a></li>
+    <li><a href="#how-it-works">How it Works</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+
+  <div class="nav-actions">
+    <button class="btn-nav-outline" onclick="setMode('owner')">List Property</button>
+    <button class="btn-nav-primary" onclick="document.getElementById('explore').scrollIntoView({behavior:'smooth'})">Find a PG</button>
+  </div>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<header class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-content" id="tenantHero">
+    <div class="hero-live-badge">
+      <div class="pulse-dot"></div>
+      <span id="liveCount">1,284</span> beds available right now in Pune
+    </div>
+
+    <h1 class="hero-title" style="animation:fadeUp .7s .1s var(--ease) both">
+      Find Your <span class="gold">Perfect PG</span><br>
+      <span class="blue">Verified.</span> Transparent. Trusted.
+    </h1>
+
+    <p class="hero-sub" style="animation:fadeUp .7s .2s var(--ease) both">
+      Real inspections. Real food ratings. Real reviews from verified residents.<br>
+      Zero brokerage across Pune's top tech hubs.
+    </p>
+
+    <div class="search-card" style="animation:fadeUp .7s .3s var(--ease) both">
+      <div class="search-field">
+        <span class="search-field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </span>
+        <div style="flex:1;">
+          <div class="search-field-label">Location / College / Tech Park</div>
+          <input type="text" id="searchInput" placeholder="Hinjewadi, MIT WPU, Kharadi..." oninput="filterPGs()">
+        </div>
+      </div>
+
+      <div class="search-field">
+        <span class="search-field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+        </span>
+        <div style="flex:1;">
+          <div class="search-field-label">Type</div>
+          <select id="genderFilter" onchange="filterPGs()">
+            <option value="">All Genders</option>
+            <option value="boys">Boys Only</option>
+            <option value="girls">Girls Only</option>
+            <option value="unisex">Unisex</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn-search" onclick="document.getElementById('explore').scrollIntoView({behavior:'smooth'})">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        Search
+      </button>
+    </div>
+
+    <div class="hero-stats" style="animation:fadeUp .7s .5s var(--ease) both">
+      <div class="hero-stat">
+        <div class="hero-stat-num gold" id="hStatPGs">0</div>
+        <div class="hero-stat-label">Verified PGs</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num blue" id="hStatTenants">0</div>
+        <div class="hero-stat-label">Happy Tenants</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num" id="hStatCities">0</div>
+        <div class="hero-stat-label">Areas in Pune</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num gold">4.8 ★</div>
+        <div class="hero-stat-label">Avg Rating</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER HERO (hidden by default) -->
+  <div class="hero-content" id="ownerHero" style="display:none;">
+    <div class="hero-live-badge" style="border-color:rgba(245,158,11,.4); color:var(--gold); background:rgba(245,158,11,.12);">
+      <div class="pulse-dot" style="background:var(--gold);"></div>
+      Join 800+ property owners earning on TrustNest
+    </div>
+    <h1 class="hero-title" style="animation:fadeUp .7s .1s var(--ease) both">
+      List Your Property.<br><span class="gold">Reach Premium Tenants.</span>
+    </h1>
+    <p class="hero-sub" style="animation:fadeUp .7s .2s var(--ease) both">
+      Get your PG in front of thousands of verified students and working professionals. Free listing, zero commission.
+    </p>
+    <div style="background:rgba(255,255,255,.06); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,.12); border-radius:var(--r-2xl); padding:36px; max-width:480px; width:100%; margin:0 auto; box-shadow:0 32px 64px rgba(0,0,0,.4);">
+      <h3 style="color:white; font-size:20px; font-weight:800; margin-bottom:6px;">Start Your Free Listing</h3>
+      <p style="color:rgba(255,255,255,.5); font-size:14px; margin-bottom:24px;">Our team will help you go live within 24 hours.</p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <input class="search-field" style="border-radius:var(--r-xl); color:white; font-size:14px; padding:14px 18px; width:100%; font-family:inherit;" type="text" placeholder="Property Name (e.g. GreenNest Residency)">
+        <input class="search-field" style="border-radius:var(--r-xl); color:white; font-size:14px; padding:14px 18px; width:100%; font-family:inherit;" type="text" placeholder="Location / Locality in Pune">
+        <input class="search-field" style="border-radius:var(--r-xl); color:white; font-size:14px; padding:14px 18px; width:100%; font-family:inherit;" type="tel" placeholder="Your Contact Number">
+        <button class="btn-search" style="width:100%; justify-content:center; background:linear-gradient(135deg, var(--gold), var(--gold-h)); color:var(--navy); box-shadow:var(--shadow-gold);">Get Started Free →</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════ FILTER BAR ═══════ -->
+<div class="filter-bar" id="filterBar">
+  <div class="filter-bar-inner">
+    <button class="filter-chip active" id="chip-all" onclick="setChip(this,'all')">🏠 All PGs</button>
+    <button class="filter-chip" id="chip-boys" onclick="setChip(this,'boys')">👦 Boys</button>
+    <button class="filter-chip" id="chip-girls" onclick="setChip(this,'girls')">👧 Girls</button>
+    <button class="filter-chip" id="chip-unisex" onclick="setChip(this,'unisex')">🤝 Unisex</button>
+    <button class="filter-chip" id="chip-ac" onclick="setChip(this,'ac')">❄️ AC Rooms</button>
+    <button class="filter-chip" id="chip-food" onclick="setChip(this,'food')">🍽️ Food Included</button>
+    <button class="filter-chip" id="chip-wifi" onclick="setChip(this,'wifi')">📶 WiFi</button>
+    <button class="filter-chip" id="chip-parking" onclick="setChip(this,'parking')">🚗 Parking</button>
+    <button class="filter-chip" id="chip-verified" onclick="setChip(this,'verified')">✅ Verified</button>
+    <button class="filter-chip active-gold" onclick="sortByPrice()">💰 Budget ↑</button>
+
+    <div class="results-counter">
+      Showing <span class="highlight" id="resultsNum">100</span> PGs &nbsp;·&nbsp; <span id="resultsArea">All Pune</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ EXPLORE: MAP + LISTINGS ═══════ -->
+<section id="explore" style="background:var(--bg);">
+  <div class="explore-layout">
+    <!-- MAP -->
+    <div class="map-panel">
+      <div class="map-search-overlay">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="mapSearch" placeholder="Search college, area, or tech park..." oninput="filterByMapSearch(this.value)">
+      </div>
+
+      <div id="pg-map"></div>
+
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Budget (≤ ₹8K)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div> Premium (₹8K–12K)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Luxury (₹12K–18K)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Limited Beds</div>
+      </div>
+    </div>
+
+    <!-- LISTINGS PANEL -->
+    <div class="listings-panel" id="listingsPanel">
+      <div class="listings-header">
+        <div class="listings-count"><span id="listCount">100</span> PGs Found in Pune</div>
+        <button class="sort-btn" onclick="sortCycle()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/>
+            <line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/>
+          </svg>
+          <span id="sortLabel">Recommended</span>
+        </button>
+      </div>
+      <div class="listings-grid" id="listingsGrid">
+        <!-- Cards rendered by JS -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ WHY TRUSTNEST ═══════ -->
+<section class="section-block" id="features" style="background:var(--card);">
+  <div class="section-inner">
+    <div style="text-align:center; max-width:600px; margin:0 auto 56px;">
+      <div class="section-eyebrow fade-up">Why TrustNest</div>
+      <div class="section-title fade-up">Built for modern tenants who demand transparency</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-blue">🔍</div>
+        <h3>100% Verified Listings</h3>
+        <p>Every PG is physically inspected and photo-verified before going live. No fake photos, no surprise amenities.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-gold">🍽️</div>
+        <h3>Food & Hygiene Scored</h3>
+        <p>Weekly kitchen audits. Every PG displays a real food quality score and a hygiene rating so you know what you're getting.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-green">🛡️</div>
+        <h3>Safety First, Always</h3>
+        <p>Biometric entry, CCTV coverage, and emergency contacts are mandatory for all TrustNest-listed PGs.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-blue">💰</div>
+        <h3>Transparent Pricing</h3>
+        <p>Zero brokerage. See the full cost breakdown — rent, deposit, maintenance — all upfront. No surprises on move-in day.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-gold">📍</div>
+        <h3>Live Availability</h3>
+        <p>Real-time bed availability updated daily by owners. If it shows available, it's available. No ghost listings.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon icon-green">⭐</div>
+        <h3>Verified Reviews</h3>
+        <p>Only current and past residents can review. Verified reviews mean honest, unbiased feedback you can trust.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ HOW IT WORKS ═══════ -->
+<section class="section-block" id="how-it-works" style="background:var(--bg);">
+  <div class="section-inner">
+    <div style="text-align:center; max-width:600px; margin:0 auto 56px;">
+      <div class="section-eyebrow fade-up">Simple Process</div>
+      <div class="section-title fade-up">Move in within 48 hours</div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:24px; position:relative;" class="fade-up">
+      <div style="position:absolute; top:36px; left:calc(12.5% + 36px); right:calc(12.5% + 36px); height:2px; background:linear-gradient(90deg, var(--blue), var(--gold));"></div>
+      <div style="text-align:center; padding:0 16px;">
+        <div style="width:72px; height:72px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:white; margin:0 auto 20px; box-shadow:var(--shadow-blue);">1</div>
+        <h4 style="font-size:16px; font-weight:700; color:var(--gray-900); margin-bottom:8px;">Search & Filter</h4>
+        <p style="font-size:13px; color:var(--gray-500);">Search by college, office, or area. Apply filters for gender, AC, food, and budget.</p>
+      </div>
+      <div style="text-align:center; padding:0 16px;">
+        <div style="width:72px; height:72px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:white; margin:0 auto 20px; box-shadow:var(--shadow-blue);">2</div>
+        <h4 style="font-size:16px; font-weight:700; color:var(--gray-900); margin-bottom:8px;">Compare on Map</h4>
+        <p style="font-size:13px; color:var(--gray-500);">View PGs on real map. Compare prices, ratings, and distances from your landmark.</p>
+      </div>
+      <div style="text-align:center; padding:0 16px;">
+        <div style="width:72px; height:72px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:var(--navy); margin:0 auto 20px; box-shadow:var(--shadow-gold);">3</div>
+        <h4 style="font-size:16px; font-weight:700; color:var(--gray-900); margin-bottom:8px;">Schedule Visit</h4>
+        <p style="font-size:13px; color:var(--gray-500);">Book a free in-person visit. Our verification team accompanies you.</p>
+      </div>
+      <div style="text-align:center; padding:0 16px;">
+        <div style="width:72px; height:72px; background:var(--green); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:white; margin:0 auto 20px; box-shadow:0 8px 32px rgba(16,185,129,.35);">4</div>
+        <h4 style="font-size:16px; font-weight:700; color:var(--gray-900); margin-bottom:8px;">Move In</h4>
+        <p style="font-size:13px; color:var(--gray-500);">Sign digitally, pay securely, and move in stress-free. We're with you every step.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ STATS ═══════ -->
+<section class="stats-section">
+  <div class="stats-grid fade-up">
+    <div>
+      <div class="stat-val s-gold" id="stat1">0</div>
+      <div class="stat-lbl">Verified PGs</div>
+    </div>
+    <div>
+      <div class="stat-val" id="stat2">0</div>
+      <div class="stat-lbl">Happy Tenants</div>
+    </div>
+    <div>
+      <div class="stat-val" id="stat3">0</div>
+      <div class="stat-lbl">Pune Localities</div>
+    </div>
+    <div>
+      <div class="stat-val s-gold">4.8 ★</div>
+      <div class="stat-lbl">Average Rating</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="footer" id="about">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">
+          <div class="nav-brand-icon" style="width:32px;height:32px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          Trust<span style="color:var(--gold)">Nest</span>
+        </div>
+        <p class="footer-tagline">India's most transparent PG discovery platform. Premium, verified, and always honest.</p>
+      </div>
+      <div>
+        <div class="footer-col-head">Company</div>
+        <ul class="footer-links">
+          <li><a href="#">About Us</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-head">For Tenants</div>
+        <ul class="footer-links">
+          <li><a href="#explore">Browse PGs</a></li>
+          <li><a href="#how-it-works">How it Works</a></li>
+          <li><a href="#">Safety Standards</a></li>
+          <li><a href="#">Parent Center</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-head">For Owners</div>
+        <ul class="footer-links">
+          <li><a href="#">List Property</a></li>
+          <li><a href="#">Owner Dashboard</a></li>
+          <li><a href="#">Verified Program</a></li>
+          <li><a href="#">Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TrustNest · Made with ❤️ in India</span>
+      <div style="display:flex; gap:24px;">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Cookie Policy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+/* ================================================================
+   TRUSTNEST — Full Application Logic
+   ================================================================ */
+
+// ──────────────────────────────────────────────
+// 1. PG DATA — 100 realistic PGs across Pune
+// ──────────────────────────────────────────────
+const AREAS = {
+  hinjewadi:   { label: 'Hinjewadi',    center: [18.5913, 73.7389] },
+  kharadi:     { label: 'Kharadi',      center: [18.5462, 73.9411] },
+  vimannagar:  { label: 'Viman Nagar',  center: [18.5679, 73.9143] },
+  baner:       { label: 'Baner',        center: [18.5590, 73.7872] },
+  wakad:       { label: 'Wakad',        center: [18.5986, 73.7617] },
+  aundh:       { label: 'Aundh',        center: [18.5590, 73.8073] },
+  magarpatta:  { label: 'Magarpatta',   center: [18.5089, 73.9260] },
+  hadapsar:    { label: 'Hadapsar',     center: [18.5089, 73.9260] },
+  kothrud:     { label: 'Kothrud',      center: [18.5074, 73.8077] },
+  shivajinagar:{ label: 'Shivajinagar', center: [18.5308, 73.8474] },
+};
+
+const AMENITY_POOL = ['WiFi','AC','Laundry','Food','Parking','Biometric','CCTV','Power Backup','Hot Water','Gym'];
+const PG_NAMES = [
+  'GreenNest Residency','Urban Hive','Skyline Coliving','The Nest','Emerald Elite',
+  'BlueBell Living','Sunrise PG','Comfort Homes','Royal Coliving','Prestige PG',
+  'ZenNest','AquaMarine Stay','Pinnacle Living','Star Homes','Urban Retreat',
+  'The Greenhouse','TechPark PG','Smart Living','CityLight PG','Metro Stays'
+];
+const GENDERS = ['boys','girls','unisex'];
+const TIERS = { budget: [5500,8000], premium: [8000,12000], luxury: [12000,18000] };
+
+function rnd(min, max){ return Math.random()*(max-min)+min; }
+function rndInt(min, max){ return Math.floor(rnd(min,max)); }
+function pick(arr){ return arr[rndInt(0,arr.length)]; }
+
+function generatePGs(){
+  const pgs = [];
+  let id = 1;
+  const areaKeys = Object.keys(AREAS);
+
+  // ~10 PGs per area = 100 total
+  areaKeys.forEach(akey => {
+    const area = AREAS[akey];
+    for(let i = 0; i < 10; i++){
+      const tierKeys = Object.keys(TIERS);
+      const tier = tierKeys[i % 3]; // cycle through budget/premium/luxury
+      const [priceMin, priceMax] = TIERS[tier];
+      const price = rndInt(priceMin, priceMax);
+      const beds = rndInt(1, 8);
+      const gender = GENDERS[i % 3];
+      const rating = parseFloat((rnd(3.8, 5.0)).toFixed(1));
+      const foodRating = parseFloat((rnd(3.5, 5.0)).toFixed(1));
+      const hygieneScore = parseFloat((rnd(3.5, 5.0)).toFixed(1));
+      const imgClass = `pg-img-${(id % 6) + 1}`;
+
+      // Pick 3-5 amenities
+      const amenCount = rndInt(3, 6);
+      const amenities = AMENITY_POOL.slice(0, amenCount);
+
+      // Scatter lat/lng around area center
+      const lat = area.center[0] + rnd(-0.02, 0.02);
+      const lng = area.center[1] + rnd(-0.025, 0.025);
+
+      pgs.push({
+        id,
+        name: `${PG_NAMES[id % PG_NAMES.length]} ${akey.charAt(0).toUpperCase() + id}`,
+        area: area.label,
+        areaKey: akey,
+        gender,
+        price,
+        tier,
+        beds,
+        rating,
+        foodRating,
+        hygieneScore,
+        amenities,
+        imgClass,
+        lat, lng,
+        verified: Math.random() > 0.15, // 85% verified
+        distance: parseFloat(rnd(0.3, 3.5).toFixed(1)),
+      });
+      id++;
+    }
+  });
+  return pgs;
+}
+
+const ALL_PGS = generatePGs();
+let filteredPGs = [...ALL_PGS];
+let activeChip = 'all';
+let sortMode = 0; // 0=recommended, 1=price↑, 2=price↓, 3=rating
+let markerMap = {}; // id -> leaflet marker
+let leafletMap = null;
+let activeMarkerId = null;
+
+// ──────────────────────────────────────────────
+// 2. MAP INITIALISATION
+// ──────────────────────────────────────────────
+function initMap(){
+  leafletMap = L.map('pg-map', {
+    center: [18.5204, 73.8567], // Pune center
+    zoom: 12,
+    zoomControl: false,
+  });
+
+  // Light premium tile style (Carto Positron — free, no API key needed)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  // Custom zoom controls
+  L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+
+  renderMarkers();
+}
+
+function getTierClass(pg){
+  if(pg.beds <= 2) return 'limited';
+  if(pg.tier === 'budget') return 'budget';
+  if(pg.tier === 'luxury') return 'luxury';
+  return 'premium';
+}
+
+function formatPrice(n){ return '₹' + n.toLocaleString('en-IN'); }
+
+function renderMarkers(){
+  // Remove existing markers
+  Object.values(markerMap).forEach(m => leafletMap.removeLayer(m));
+  markerMap = {};
+
+  filteredPGs.forEach(pg => {
+    const tierClass = getTierClass(pg);
+    const el = document.createElement('div');
+    el.className = `price-marker ${tierClass}`;
+    el.textContent = formatPrice(pg.price);
+    el.style.zIndex = 500;
+
+    const icon = L.divIcon({ html: el.outerHTML, className: '', iconAnchor: [0, 0] });
+    const marker = L.marker([pg.lat, pg.lng], { icon, zIndexOffset: 500 }).addTo(leafletMap);
+
+    marker.on('click', () => {
+      openPopup(pg, marker);
+      highlightCard(pg.id);
+    });
+
+    markerMap[pg.id] = marker;
+  });
+}
+
+function openPopup(pg, marker){
+  const popupHtml = `
+    <div class="map-popup">
+      <div class="popup-img ${pg.imgClass}">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      </div>
+      <div class="popup-body">
+        <div class="popup-name">${pg.name}</div>
+        <div class="popup-area">📍 ${pg.area}, Pune</div>
+        <div class="popup-stats">
+          <span class="popup-stat" style="background:var(--gold-lt); color:#92400e;">🍽️ ${pg.foodRating}</span>
+          <span class="popup-stat" style="background:var(--green-lt); color:#065f46;">✅ ${pg.hygieneScore}</span>
+          <span class="popup-stat" style="background:var(--blue-lt); color:#1e40af;">🛏 ${pg.beds} beds</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="popup-price">${formatPrice(pg.price)}<span style="font-size:11px; font-weight:500; color:var(--gray-400)">/mo</span></div>
+          <button class="popup-btn" style="width:auto; padding:7px 14px;" onclick="highlightCard(${pg.id})">View Details →</button>
+        </div>
+      </div>
+    </div>`;
+
+  L.popup({ maxWidth: 280, closeButton: true, className: 'custom-popup' })
+    .setLatLng([pg.lat, pg.lng])
+    .setContent(popupHtml)
+    .openOn(leafletMap);
+}
+
+// ──────────────────────────────────────────────
+// 3. CARD RENDERING
+// ──────────────────────────────────────────────
+function renderCards(){
+  const grid = document.getElementById('listingsGrid');
+  grid.innerHTML = '';
+  document.getElementById('listCount').textContent = filteredPGs.length;
+  document.getElementById('resultsNum').textContent = filteredPGs.length;
+
+  if(filteredPGs.length === 0){
+    grid.innerHTML = '<div style="padding:40px; text-align:center; color:var(--gray-400)"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px; display:block"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p style="font-weight:600; font-size:15px; color:var(--gray-700); margin-bottom:4px">No PGs match your filters</p><p style="font-size:13px">Try removing some filters to see more results</p></div>';
+    return;
+  }
+
+  filteredPGs.forEach(pg => {
+    const card = document.createElement('div');
+    card.className = 'pg-card';
+    card.id = `card-${pg.id}`;
+
+    const genderTag = pg.gender === 'boys' ? 'tag-boys' : pg.gender === 'girls' ? 'tag-girls' : 'tag-unisex';
+    const genderLabel = pg.gender === 'boys' ? '👦 Boys' : pg.gender === 'girls' ? '👧 Girls' : '🤝 Unisex';
+    const tierBadge = pg.tier === 'luxury' ? '👑 Luxury' : pg.tier === 'premium' ? '⭐ Premium' : '💚 Budget';
+
+    const amenHtml = pg.amenities.slice(0,4).map(a => `<span class="amenity-tag">${a}</span>`).join('');
+
+    card.innerHTML = `
+      <div class="pg-card-img-wrap">
+        <div class="${pg.imgClass} pg-img-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+        <span class="pg-gender-tag ${genderTag}">${genderLabel}</span>
+        ${pg.verified ? `<span class="pg-verified-tag"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Verified</span>` : ''}
+      </div>
+      <div class="pg-card-body">
+        <div class="pg-card-top">
+          <div class="pg-name" title="${pg.name}">${pg.name}</div>
+          <button class="pg-fav-btn" onclick="toggleFav(this, event)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="pg-location">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          ${pg.area}, Pune &nbsp;·&nbsp; ${pg.distance} km from tech park
+        </div>
+        <div class="pg-scores">
+          <span class="score-badge score-food">🍽️ Food ${pg.foodRating}/5</span>
+          <span class="score-badge score-hygiene">🧹 Hygiene ${pg.hygieneScore}/5</span>
+          <span class="score-badge score-beds">🛏 ${pg.beds} bed${pg.beds > 1 ? 's' : ''} left</span>
+        </div>
+        <div class="pg-amenities">${amenHtml}</div>
+        <div class="pg-card-bottom">
+          <div class="pg-price-wrap">
+            <div class="pg-price">${formatPrice(pg.price)}<span style="font-size:12px; font-weight:500; color:var(--gray-400)">/mo</span></div>
+            <div class="pg-price-label">${tierBadge} · ⭐ ${pg.rating}</div>
+          </div>
+          <button class="btn-view" onclick="panToMarker(${pg.id})">View on Map →</button>
+        </div>
+      </div>`;
+
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.pg-fav-btn') || e.target.closest('.btn-view')) return;
+      panToMarker(pg.id);
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+// ──────────────────────────────────────────────
+// 4. SYNC: Card ↔ Map
+// ──────────────────────────────────────────────
+function panToMarker(pgId){
+  const pg = ALL_PGS.find(p => p.id === pgId);
+  if(!pg) return;
+  leafletMap.flyTo([pg.lat, pg.lng], 15, { animate: true, duration: 0.8 });
+  const marker = markerMap[pgId];
+  if(marker) openPopup(pg, marker);
+  highlightCard(pgId);
+}
+
+function highlightCard(pgId){
+  // Unhighlight all
+  document.querySelectorAll('.pg-card').forEach(c => c.classList.remove('highlighted'));
+  const card = document.getElementById(`card-${pgId}`);
+  if(card){
+    card.classList.add('highlighted');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Highlight marker via DOM hack (re-render active marker icon)
+  if(activeMarkerId && markerMap[activeMarkerId]){
+    // Reset old marker
+    const oldPg = ALL_PGS.find(p => p.id === activeMarkerId);
+    if(oldPg) updateMarkerState(activeMarkerId, false);
+  }
+  updateMarkerState(pgId, true);
+  activeMarkerId = pgId;
+}
+
+function updateMarkerState(pgId, isActive){
+  const marker = markerMap[pgId];
+  if(!marker) return;
+  const pg = ALL_PGS.find(p => p.id === pgId);
+  if(!pg) return;
+  const tierClass = getTierClass(pg);
+  const el = document.createElement('div');
+  el.className = `price-marker ${tierClass}${isActive ? ' active' : ''}`;
+  el.textContent = formatPrice(pg.price);
+  const icon = L.divIcon({ html: el.outerHTML, className: '', iconAnchor: [0,0] });
+  marker.setIcon(icon);
+  if(isActive) marker.setZIndexOffset(1000);
+  else marker.setZIndexOffset(500);
+}
+
+// ──────────────────────────────────────────────
+// 5. FILTERING
+// ──────────────────────────────────────────────
+function applyFilters(){
+  const searchVal = (document.getElementById('searchInput').value || document.getElementById('mapSearch').value || '').toLowerCase();
+  const genderVal = document.getElementById('genderFilter').value;
+
+  filteredPGs = ALL_PGS.filter(pg => {
+    // Text search
+    if(searchVal && !pg.name.toLowerCase().includes(searchVal) && !pg.area.toLowerCase().includes(searchVal) && !pg.areaKey.includes(searchVal)) return false;
+    // Gender chip
+    if(activeChip === 'boys' && pg.gender !== 'boys') return false;
+    if(activeChip === 'girls' && pg.gender !== 'girls') return false;
+    if(activeChip === 'unisex' && pg.gender !== 'unisex') return false;
+    // Gender dropdown
+    if(genderVal && pg.gender !== genderVal) return false;
+    // Feature chips
+    if(activeChip === 'ac' && !pg.amenities.includes('AC')) return false;
+    if(activeChip === 'food' && !pg.amenities.includes('Food')) return false;
+    if(activeChip === 'wifi' && !pg.amenities.includes('WiFi')) return false;
+    if(activeChip === 'parking' && !pg.amenities.includes('Parking')) return false;
+    if(activeChip === 'verified' && !pg.verified) return false;
+    return true;
+  });
+
+  // Sort
+  applySortMode();
+
+  renderMarkers();
+  renderCards();
+
+  // Update results counter
+  const area = searchVal ? searchVal.charAt(0).toUpperCase() + searchVal.slice(1) : 'All Pune';
+  document.getElementById('resultsArea').textContent = area;
+}
+
+function applySortMode(){
+  if(sortMode === 1) filteredPGs.sort((a,b) => a.price - b.price);
+  else if(sortMode === 2) filteredPGs.sort((a,b) => b.price - a.price);
+  else if(sortMode === 3) filteredPGs.sort((a,b) => b.rating - a.rating);
+  // else recommended (original order)
+}
+
+function filterPGs(){ applyFilters(); }
+function filterByMapSearch(val){ document.getElementById('searchInput').value = val; applyFilters(); }
+
+function setChip(el, chipId){
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeChip = chipId;
+  applyFilters();
+}
+
+const sortLabels = ['Recommended','Price: Low → High','Price: High → Low','Top Rated'];
+function sortCycle(){
+  sortMode = (sortMode + 1) % 4;
+  document.getElementById('sortLabel').textContent = sortLabels[sortMode];
+  applySortMode();
+  renderMarkers();
+  renderCards();
+}
+
+function sortByPrice(){ sortMode = 1; document.getElementById('sortLabel').textContent = 'Price: Low → High'; applySortMode(); renderMarkers(); renderCards(); }
+
+// ──────────────────────────────────────────────
+// 6. FAVOURITES
+// ──────────────────────────────────────────────
+function toggleFav(btn, e){
+  e.stopPropagation();
+  btn.classList.toggle('active');
+  if(btn.classList.contains('active')){
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>';
+  } else {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// 7. NAVBAR SCROLL
+// ──────────────────────────────────────────────
+let lastST = 0;
+window.addEventListener('scroll', () => {
+  const st = window.scrollY;
+  const nav = document.getElementById('navbar');
+  if(st > 20) nav.classList.add('scrolled'); else nav.classList.remove('scrolled');
+  lastST = st;
+}, { passive: true });
+
+// ──────────────────────────────────────────────
+// 8. OWNER / TENANT MODE
+// ──────────────────────────────────────────────
+function setMode(mode){
+  if(mode === 'owner'){
+    document.getElementById('tenantHero').style.display = 'none';
+    document.getElementById('ownerHero').style.display = 'flex';
+  } else {
+    document.getElementById('tenantHero').style.display = 'flex';
+    document.getElementById('ownerHero').style.display = 'none';
+  }
+}
+
+// ──────────────────────────────────────────────
+// 9. ANIMATED COUNTERS
+// ──────────────────────────────────────────────
+function animateNum(el, target, suffix, decimals, duration){
+  const start = Date.now();
+  const tick = () => {
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = eased * target;
+    el.textContent = (decimals ? val.toFixed(decimals) : Math.floor(val).toLocaleString('en-IN')) + suffix;
+    if(progress < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function runCounters(){
+  animateNum(document.getElementById('hStatPGs'),     2400, '+', 0, 2000);
+  animateNum(document.getElementById('hStatTenants'), 18000, '+', 0, 2200);
+  animateNum(document.getElementById('hStatCities'),  10, '', 0, 1200);
+  animateNum(document.getElementById('stat1'), 2400, '+', 0, 2000);
+  animateNum(document.getElementById('stat2'), 18000, '+', 0, 2200);
+  animateNum(document.getElementById('stat3'), 10, '', 0, 1200);
+}
+
+// Live counter dynamic update simulation
+let liveCount = 1284;
+setInterval(() => {
+  const delta = rndInt(-3, 8);
+  liveCount = Math.max(1000, liveCount + delta);
+  const el = document.getElementById('liveCount');
+  if(el) el.textContent = liveCount.toLocaleString('en-IN');
+}, 4000);
+
+// ──────────────────────────────────────────────
+// 10. SCROLL ANIMATIONS
+// ──────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.fade-up').forEach((el, i) => {
+  el.style.transitionDelay = `${(i % 6) * 0.08}s`;
+  observer.observe(el);
+});
+
+// Stats observer
+const statsObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ runCounters(); statsObs.disconnect(); }
+  });
+}, { threshold: 0.4 });
+const statsSection = document.querySelector('.stats-section');
+if(statsSection) statsObs.observe(statsSection);
+
+// Hero counter on load
+setTimeout(runCounters, 600);
+
+// ──────────────────────────────────────────────
+// 11. INIT ON DOM READY
+// ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderCards();
+  initMap();
+});
+</script>
+</body>
+</html>
