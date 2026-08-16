@@ -1,8 +1,0 @@
-{
-  "builds": [{
-    "src": "govtech-guardians/package.json",
-    "use": "@vercel/static-build",
-    "config": { "distDir": "govtech-guardians/dist" }
-  }],
-  "routes": [{ "src": "/(.*)", "dest": "govtech-guardians/dist/$1" }]
-}

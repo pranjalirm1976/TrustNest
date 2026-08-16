@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emerald Elite Coliving, Hinjewadi Phase 1 — NestIQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* Existing design system */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#059669;--green-dark:#047857;--green-xlight:#ecfdf5;--green-light:#d1fae5;--amber:#F59E0B;--amber-light:#fef3c7;--white:#fff;--gray-50:#F8FAFC;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-300:#cbd5e1;--gray-400:#94a3b8;--gray-500:#64748b;--gray-600:#475569;--gray-700:#334155;--gray-800:#1e293b;--gray-900:#0f172a;--shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);--shadow-md:0 4px 16px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);--shadow-lg:0 10px 40px rgba(0,0,0,.10),0 4px 12px rgba(0,0,0,.06);--shadow-xl:0 20px 60px rgba(0,0,0,.12),0 8px 20px rgba(0,0,0,.08);--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;--r-full:9999px;--t:.25s cubic-bezier(.4,0,.2,1)}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--white);color:var(--gray-800);line-height:1.6;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--gray-50)}::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:3px}
+/* NAVBAR */
+.navbar{position:fixed;top:0;left:0;right:0;z-index:1000;height:68px;display:flex;align-items:center;padding:0 32px;background:rgba(255,255,255,.88);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(0,0,0,.06);box-shadow:var(--shadow-sm)}
+.nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.nav-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--green),var(--green-dark));border-radius:10px;display:flex;align-items:center;justify-content:center}
+.nav-logo-text{font-size:20px;font-weight:800;color:var(--gray-900);letter-spacing:-.5px}
+.nav-logo-text span{color:var(--green)}
+.nav-breadcrumb{display:flex;align-items:center;gap:8px;margin-left:24px;font-size:13px;color:var(--gray-400)}
+.nav-breadcrumb a{color:var(--gray-500);text-decoration:none;transition:color var(--t)}
+.nav-breadcrumb a:hover{color:var(--green)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+/* PAGE WRAPPER */
+.page{max-width:1280px;margin:0 auto;padding:88px 24px 80px}
+/* MEDIA GRID */
+.media-grid{display:grid;grid-template-columns:1.65fr 1fr;grid-template-rows:260px 260px;gap:12px;border-radius:var(--r-xl);overflow:hidden;margin-bottom:40px}
+.media-cell{position:relative;overflow:hidden;cursor:pointer}
+.media-cell.main{grid-row:1/3}
+.media-cell-bg{width:100%;height:100%;transition:transform .4s ease}
+.media-cell:hover .media-cell-bg{transform:scale(1.04)}
+.media-zoom{position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background var(--t);opacity:0}
+.media-cell:hover .media-zoom{background:rgba(0,0,0,.28);opacity:1}
+.media-zoom-btn{background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:none;border-radius:var(--r-full);padding:10px 20px;font-size:13px;font-weight:700;color:var(--gray-800);cursor:pointer;display:flex;align-items:center;gap:6px;transform:translateY(8px);transition:transform var(--t)}
+.media-cell:hover .media-zoom-btn{transform:translateY(0)}
+.media-count-badge{position:absolute;bottom:14px;right:14px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);color:white;font-size:12px;font-weight:600;padding:5px 12px;border-radius:var(--r-full)}
+/* MAIN LAYOUT */
+.content-layout{display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start}
+.main-panel{min-width:0}
+.sidebar{position:sticky;top:88px}
+/* PROPERTY HEADER */
+.prop-header{margin-bottom:28px}
+.prop-badges{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:var(--r-full);font-size:11px;font-weight:700}
+.badge-verified{background:var(--green-xlight);color:var(--green-dark);border:1px solid rgba(5,150,105,.2)}
+.badge-live{background:#fef2f2;color:#dc2626;border:1px solid rgba(220,38,38,.2)}
+.badge-live-dot{width:6px;height:6px;border-radius:50%;background:#dc2626;animation:blink 1.2s infinite}
+.badge-premium{background:var(--amber-light);color:#92400e;border:1px solid rgba(245,158,11,.25)}
+.prop-name{font-size:clamp(26px,3.5vw,38px);font-weight:900;color:var(--gray-900);letter-spacing:-1px;line-height:1.1;margin-bottom:8px}
+.prop-location{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--gray-500);margin-bottom:16px}
+.prop-meta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.prop-rating{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--gray-800)}
+.prop-rating-stars{color:var(--amber);font-size:15px}
+.prop-reviews{font-size:13px;color:var(--gray-400);font-weight:400}
+/* SECTION BLOCKS */
+.section-block{margin-bottom:36px;padding-bottom:36px;border-bottom:1px solid var(--gray-100)}
+.section-heading{font-size:18px;font-weight:800;color:var(--gray-900);margin-bottom:16px;letter-spacing:-.3px}
+/* AMENITIES GRID */
+.amenities-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.amenity-tile{background:var(--gray-50);border:1px solid rgba(0,0,0,.05);border-radius:var(--r-md);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;transition:all var(--t)}
+.amenity-tile:hover{background:var(--green-xlight);border-color:rgba(5,150,105,.2);transform:translateY(-2px)}
+.amenity-tile-icon{width:40px;height:40px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
+.amenity-tile-label{font-size:12px;font-weight:600;color:var(--gray-600)}
+/* RULES */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rule-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray-600);padding:10px 14px;background:var(--gray-50);border-radius:var(--r-sm)}
+.rule-ok{background:var(--green-xlight);color:var(--green)}
+.rule-no{background:#fef2f2;color:#dc2626}
+.feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.feature-card{background:var(--gray-50);border:1px solid rgba(0,0,0,.05);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm)}
+.feature-card h3{font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:6px}
+.feature-card p{font-size:13px;color:var(--gray-500);line-height:1.6}
+.feature-icon{width:42px;height:42px;border-radius:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.icon-blue{background:var(--blue-lt)}
+.icon-gold{background:var(--gold-lt)}
+.icon-green{background:var(--green-lt)}
+.sort-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:var(--r-full);font-size:12px;font-weight:700;color:var(--gray-700);cursor:pointer;transition:all .2s ease;font-family:inherit}
+.sort-btn:hover{background:var(--gray-200);color:var(--gray-900)}
+.price-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100);font-size:14px;color:var(--gray-600)}
+.price-item.total{font-size:16px;font-weight:800;color:var(--gray-900);border-bottom:none;padding-top:16px}
+.cta-primary{width:100%;margin-top:16px;padding:14px 18px;background:linear-gradient(135deg,var(--green),var(--green-dark));color:white;border:none;border-radius:var(--r-xl);font-size:15px;font-weight:800;box-shadow:var(--shadow-md)}
+.cta-primary:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
+.badge-verified-dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+/* ANIMATIONS */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(.88)}}
+/* ---------- MAP MODULE (Chunk 1) ---------- */
+#neighborhood-map-engine{position:relative;width:100%;height:550px;margin:2rem 0;border-radius:var(--r-lg);overflow:hidden;background:rgba(255,255,255,.05);backdrop-filter:blur(12px) saturate(180%);box-shadow:0 8px 32px rgba(0,0,0,.12),0 4px 12px rgba(0,0,0,.08);opacity:0;animation:mapFadeIn .8s forwards ease-out}
+@keyframes mapFadeIn{to{opacity:1}}
+#map-controls{position:absolute;top:1rem;left:1rem;display:flex;flex-direction:column;gap:.6rem;background:rgba(255,255,255,.92);border-radius:var(--r-md);padding:.6rem .8rem;box-shadow:var(--shadow-sm);z-index:1000}
+#map-controls button{display:flex;align-items:center;gap:.4rem;font-family:inherit;font-size:.85rem;font-weight:600;color:var(--gray-800);background:var(--white);border:1px solid var(--gray-200);border-radius:var(--r-full);padding:.4rem .8rem;cursor:pointer;transition:background var(--t),border-color var(--t)}
+#map-controls button:hover{background:var(--green-xlight);border-color:var(--green)}
+.marker-price{position:relative;width:2.2rem;height:2.2rem;background:var(--green-xlight);border:2px solid var(--green-dark);border-radius:50%;color:var(--green-dark);font-weight:700;font-size:.75rem;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(5,150,105,.12);animation:pulseRing 2s infinite}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(5,150,105,.12)}70%{box-shadow:0 0 0 10px rgba(5,150,105,0)}100%{box-shadow:0 0 0 0 rgba(5,150,105,0)}}
+.marker-competitor{background:#e0e7ff;border-color:#64748b}
+.marker-primary{background:var(--green-xlight);border-color:var(--green-dark)}
+.leaflet-popup .leaflet-popup-content-wrapper{border-radius:var(--r-md);box-shadow:var(--shadow-md);padding:0}
+.leaflet-popup .leaflet-popup-content{margin:0;width:260px;font-family:inherit}
+.map-card{display:flex;flex-direction:column;gap:.6rem}
+.map-card .card-banner{width:100%;height:120px;background:var(--gray-200);position:relative;border-top-left-radius:var(--r-md);border-top-right-radius:var(--r-md)}
+.map-card .badge-gender{position:absolute;top:.6rem;left:.6rem;background:var(--green-xlight);color:var(--green-dark);padding:.2rem .5rem;font-size:.7rem;font-weight:600;border-radius:var(--r-full)}
+.map-card .card-body{padding:.8rem}
+.map-card .card-body h4{margin:0;font-size:1.1rem;font-weight:800;color:var(--gray-900)}
+.map-card .badge-verified{display:inline-block;margin-top:.4rem;background:var(--green-xlight);color:var(--green-dark);font-size:.75rem;font-weight:600;padding:.2rem .5rem;border-radius:var(--r-full)}
+.map-card .card-link{margin-top:.6rem;display:inline-block;font-size:.85rem;color:var(--green);font-weight:600}
+.map-card .card-link:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">🏠</div>
+    <div class="nav-logo-text">Nest<span>IQ</span></div>
+  </a>
+  <nav class="nav-breadcrumb">
+    <a href="index.html">Home</a>
+    <span class="nav-breadcrumb-sep">/</span>
+    <a href="index.html">Properties</a>
+    <span class="nav-breadcrumb-sep">/</span>
+    <span>Emerald Elite Coliving</span>
+  </nav>
+  <div class="nav-right">
+    <button class="nav-share-btn">Share</button>
+    <button class="nav-save-btn">Save</button>
+  </div>
+</header>
+<div class="page">
+  <!-- PROPERTY HEADER -->
+  <section class="prop-header">
+    <div class="prop-badges">
+      <span class="badge badge-verified"><span class="badge-verified-dot"></span> Verified</span>
+      <span class="badge badge-live"><span class="badge-live-dot"></span> Live</span>
+      <span class="badge badge-premium">Premium</span>
+    </div>
+    <h1 class="prop-name">Emerald Elite Coliving, Hinjewadi Phase 1</h1>
+    <div class="prop-location">
+      <svg width="16" height="16" fill="currentColor"><path d="M8 0a5 5 0 0 0-5 5c0 3.25 5 11 5 11s5-7.75 5-11a5 5 0 0 0-5-5z"/></svg>
+      Hinjewadi, Pune
+    </div>
+    <div class="prop-meta-row">
+      <div class="prop-rating"><span class="prop-rating-stars">★ 4.8</span> <span class="prop-reviews">(124 reviews)</span></div>
+      <div class="prop-meta-sep"></div>
+      <div class="prop-meta-item"><strong>1500 sq ft</strong> • Spacious</div>
+      <div class="prop-meta-sep"></div>
+      <div class="prop-meta-item"><strong>24/7</strong> Security</div>
+    </div>
+  </section>
+  <!-- MEDIA GRID (unchanged) -->
+  <section class="media-grid">
+    <div class="media-cell main">
+      <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80" alt="Main view" class="media-cell-bg">
+      <div class="media-zoom"><button class="media-zoom-btn">Zoom</button></div>
+      <div class="media-count-badge">12 Photos</div>
+    </div>
+    <div class="media-cell"><img src="https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=900&q=80" alt="Room 1" class="media-cell-bg"></div>
+    <div class="media-cell"><img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80" alt="Room 2" class="media-cell-bg"></div>
+    <div class="media-cell"><img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=900&q=80" alt="Room 3" class="media-cell-bg"></div>
+  </section>
+  <!-- MAIN LAYOUT -->
+  <div class="content-layout">
+    <section class="main-panel">
+      <article class="section-block">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="section-eyebrow">Neighborhood Explorer</div>
+            <h2 class="section-heading" style="margin-bottom:0;">Map the PG before you commit</h2>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="sort-btn" id="toggle-satellite">🛰️ Satellite View</button>
+            <button class="sort-btn" id="toggle-grid">◻︎ Grid Overlay</button>
+          </div>
+        </div>
+        <div id="neighborhood-map-engine"></div>
+      </article>
+
+      <article class="section-block">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="section-eyebrow">Bed-Level Availability</div>
+            <h2 class="section-heading" style="margin-bottom:0;">See exactly which bed is free</h2>
+          </div>
+          <span class="badge badge-live">Updated 3 minutes ago</span>
+        </div>
+        <div class="amenities-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="amenity-tile" style="background:var(--green-xlight);"><div class="amenity-tile-icon">A</div><div class="amenity-tile-label">Room 201 Bed A<br><strong>Available</strong></div></div>
+          <div class="amenity-tile"><div class="amenity-tile-icon">B</div><div class="amenity-tile-label">Room 201 Bed B<br><strong>Occupied</strong></div></div>
+          <div class="amenity-tile"><div class="amenity-tile-icon">C</div><div class="amenity-tile-label">Room 201 Bed C<br><strong>Occupied</strong></div></div>
+          <div class="amenity-tile" style="background:var(--green-xlight);"><div class="amenity-tile-icon">D</div><div class="amenity-tile-label">Room 201 Bed D<br><strong>Available</strong></div></div>
+        </div>
+      </article>
+
+      <article class="section-block">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="section-eyebrow">Food Transparency</div>
+            <h2 class="section-heading" style="margin-bottom:0;">Daily menu with real photo proof</h2>
+          </div>
+          <span class="badge badge-premium">Breakfast uploaded 8:10 AM</span>&nbsp;&nbsp;<a href="compare.html" style="font-size:13px;font-weight:600;color:var(--green);text-decoration:none;">Compare with nearby kitchens →</a>
+        </div>
+        <div class="feature-grid" style="grid-template-columns:repeat(3,1fr);margin-top:0;">
+          <div class="feature-card"><div class="feature-icon icon-blue">🌅</div><h3>Breakfast</h3><p>Poha + tea with a real photo from today’s kitchen upload.</p></div>
+          <div class="feature-card"><div class="feature-icon icon-gold">☀️</div><h3>Lunch</h3><p>Dal rice, salad, and buttermilk tracked against the daily menu.</p></div>
+          <div class="feature-card"><div class="feature-icon icon-green">🌙</div><h3>Dinner</h3><p>Chapati + sabji with photo verification so residents know what to expect.</p></div>
+        </div>
+      </article>
+
+      <article class="section-block">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="section-eyebrow">Complaint SLA</div>
+            <h2 class="section-heading" style="margin-bottom:0;">24-hour resolution clock</h2>
+          </div>
+          <span class="badge badge-verified">Auto compensation enabled</span>
+        </div>
+        <div class="rules-grid">
+          <div class="rule-item rule-ok">WiFi issue logged at 10:00 AM</div>
+          <div class="rule-item rule-ok">Owner notified instantly</div>
+          <div class="rule-item rule-no">Deadline expires in 14h 28m</div>
+          <div class="rule-item rule-no">Unresolved complaints trigger credit or rent discount</div>
+        </div>
+      </article>
+
+      <article class="section-block">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+          <div>
+            <div class="section-eyebrow">3D Room Preview</div>
+            <h2 class="section-heading" style="margin-bottom:0;">Rotate the room before you visit</h2>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:stretch;">
+          <div style="min-height:260px;border-radius:24px;background:linear-gradient(145deg,#0f172a,#1d4ed8 55%,#0f766e);position:relative;overflow:hidden;box-shadow:var(--shadow-lg);">
+            <div style="position:absolute;inset:24px;border-radius:22px;border:1px solid rgba(255,255,255,.22);transform:perspective(900px) rotateX(64deg) rotateZ(-8deg);background:rgba(255,255,255,.06);"></div>
+            <div style="position:absolute;left:26px;bottom:28px;color:white;font-weight:700;">Bed • cupboard • study table • window • attached washroom</div>
+          </div>
+          <div class="feature-card" style="margin:0;">
+            <div class="feature-icon icon-blue">🧭</div>
+            <h3>Room controls</h3>
+            <p>Inspect bed placement, size, storage, and circulation space before you book.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+    <aside class="sidebar">
+      <h3 style="margin-bottom:1rem;font-weight:800;">Your Booking</h3>
+      <div class="price-item"><span>Rent Fee (30 days)</span><span id="priceRent">₹ 12,000</span></div>
+      <div class="price-item"><span>Deposit</span><span id="priceDeposit">₹ 4,000</span></div>
+      <div class="price-item"><span>Security</span><span id="priceSecurity">₹ 2,000</span></div>
+      <div class="price-item"><span>Platform Maintenance</span><span id="priceMaintenance">₹ 500</span></div>
+      <div class="price-item total"><span>Total</span><span id="priceTotal">₹ 18,500</span></div>
+      <button class="cta-primary" id="secureBtn" onclick="window.location='checkout.html'">Secure This Bed</button>
+    </aside>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ---------- MAP LOGIC ---------- */
+const MAP_CENTER = [18.5913, 73.7389];
+const MAP_ZOOM   = 15;
+const SAT_TILE = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+  subdomains:['mt0','mt1','mt2','mt3'],
+  attribution:'&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+  maxZoom:20,
+  tileSize:256,
+  crossOrigin:true
+});
+const map = L.map('neighborhood-map-engine', {
+  center: MAP_CENTER,
+  zoom: MAP_ZOOM,
+  layers: [SAT_TILE],
+  scrollWheelZoom:true,
+  zoomControl:true,
+  attributionControl:false
+});
+// Marker factory
+function createMarker(pos, type, price, popup) {
+  const classMap = {primary:'marker-primary', competitor:'marker-competitor'};
+  const html = `<div class="marker-price ${classMap[type]}">₹${price}/mo</div>`;
+  const icon = L.divIcon({html, className:'', iconSize:[44,44], iconAnchor:[22,44], popupAnchor:[0,-44]});
+  const m = L.marker(pos,{icon}).addTo(map);
+  m.on('click',()=>{
+    map.setView(pos, MAP_ZOOM,{animate:true,duration:0.6});
+    const pop = L.popup({closeButton:true,autoClose:true, className:'custom-leaflet-popup', maxWidth:300})
+      .setLatLng(pos)
+      .setContent(buildPopup(popup))
+      .openOn(map);
+  });
+}
+function buildPopup({name,gender,rating,price,imgUrl}){
+  const genderColors={'Girls':'#f9a8d4','Boys':'#93c5fd','Unisex':'#d1fae5'};
+  const bg = genderColors[gender]||'#e5e7eb';
+  return `
+    <div class="map-card">
+      <div class="card-banner" style="background-image:url('${imgUrl}');background-size:cover;">
+        <span class="badge-gender" style="background:${bg};color:#111;">${gender}</span>
+      </div>
+      <div class="card-body">
+        <h4>${name}</h4>
+        <div class="badge-verified">⭐ ${rating}</div>
+        <div style="margin-top:.4rem;font-weight:600;">₹${price}/mo</div>
+        <a href="compare.html" class="card-link">Cross‑Compare Food Menu →</a>
+      </div>
+    </div>`;
+}
+// Data set
+const data = [
+  {type:'primary', pos:[18.5913,73.7389], price:12000, popup:{name:'Emerald Elite Coliving', gender:'Unisex', rating:'4.7 Kitchen Hygiene Verified', price:12000, imgUrl:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'}},
+  {type:'competitor', pos:[18.5885,73.7312], price:14500, popup:{name:'Stanza Living Frankfurt House', gender:'Girls', rating:'4.5 Safety Verified', price:14500, imgUrl:'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80'}},
+  {type:'competitor', pos:[18.5952,73.7431], price:9200,  popup:{name:'Zolo Solstice / Zolo Clayton Hub', gender:'Boys', rating:'4.6 Hygiene Verified', price:9200, imgUrl:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'}},
+  {type:'competitor', pos:[18.5841,73.7354], price:7800,  popup:{name:'Nestigo / Royal Coliving Suites', gender:'Unisex', rating:'4.4 Verified', price:7800, imgUrl:'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80'}}
+];
+data.forEach(d=>createMarker(d.pos,d.type,d.price,d.popup));
+/* ---------- GRID & SATELLITE TOGGLES ---------- */
+let streetLayer=null;
+const satelliteBtn = document.getElementById('toggle-satellite');
+if (satelliteBtn) {
+  satelliteBtn.addEventListener('click',()=>{
+    if(map.hasLayer(SAT_TILE)){
+      map.removeLayer(SAT_TILE);
+      if(!streetLayer){
+        streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap contributors'});
+      }
+      streetLayer.addTo(map);
+      satelliteBtn.textContent='🚧 Street View';
+    }else{
+      if(streetLayer) map.removeLayer(streetLayer);
+      SAT_TILE.addTo(map);
+      satelliteBtn.textContent='🛰️ Satellite View';
+    }
+  });
+}
+let gridOverlay=null;
+const gridBtn = document.getElementById('toggle-grid');
+if (gridBtn) {
+  gridBtn.addEventListener('click',()=>{
+    if(gridOverlay){
+      map.removeLayer(gridOverlay);
+      gridOverlay=null;
+      return;
+    }
+    const bounds = map.getBounds();
+    const step = 0.0025; // ~250 m
+    const lines=[];
+    for(let lng=bounds.getWest(); lng<=bounds.getEast(); lng+=step){
+      lines.push([[bounds.getSouth(),lng],[bounds.getNorth(),lng]]);
+    }
+    for(let lat=bounds.getSouth(); lat<=bounds.getNorth(); lat+=step){
+      lines.push([[lat,bounds.getWest()],[lat,bounds.getEast()]]);
+    }
+    gridOverlay = L.layerGroup(lines.map(p=>L.polyline(p,{color:'#94a3b8',weight:0.8,opacity:0.4}))).addTo(map);
+  });
+}
+</script>
+</body>
+</html>

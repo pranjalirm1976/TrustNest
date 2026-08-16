@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NestIQ Owner Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #059669; /* Deep Emerald Green */
+    --primary-light: #d1fae5;
+    --primary-dark: #047857;
+    --amber: #F59E0B; /* Warm Amber */
+    --amber-light: #fef3c7;
+    --bg-color: #f8fafc;
+    --sidebar-bg: #1e293b;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border-light: rgba(226, 232, 240, 0.8);
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius-lg: 12px;
+    --radius-md: 8px;
+    --transition: all 0.2s ease;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-dark);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* --- Sidebar --- */
+  .sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .brand {
+    padding: 24px 20px;
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .brand-logo {
+    width: 32px; height: 32px;
+    background: var(--primary);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .branch-selector {
+    padding: 16px 20px;
+  }
+  .branch-selector select {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    border-radius: var(--radius-md);
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .branch-selector select option { color: black; }
+  
+  .nav-menu {
+    list-style: none;
+    padding: 12px 0;
+    flex: 1;
+  }
+  .nav-item a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-weight: 500;
+    transition: var(--transition);
+  }
+  .nav-item a:hover, .nav-item.active a {
+    background: rgba(255,255,255,0.05);
+    color: white;
+    border-left: 4px solid var(--primary);
+  }
+  .nav-icon { font-size: 18px; }
+
+  /* --- Main Content --- */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* --- Header --- */
+  .header {
+    height: 72px;
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-search {
+    display: flex; align-items: center;
+    background: #f1f5f9;
+    padding: 8px 16px;
+    border-radius: 20px;
+    width: 300px;
+  }
+  .header-search input {
+    border: none; background: transparent; outline: none;
+    margin-left: 8px; width: 100%; font-family: inherit; font-size: 14px;
+  }
+  .header-actions {
+    display: flex; align-items: center; gap: 24px;
+  }
+  .status-indicator {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--primary);
+    background: var(--primary-light);
+    padding: 6px 12px; border-radius: 20px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; background: var(--primary); border-radius: 50%;
+  }
+  .profile-circle {
+    width: 36px; height: 36px; background: #cbd5e1; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; color: white;
+  }
+
+  /* --- Dashboard Container --- */
+  .dashboard-container {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* --- KPI Grid --- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(8px);
+  }
+  .kpi-info { display: flex; flex-direction: column; gap: 8px; }
+  .kpi-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-dark); }
+  .kpi-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  
+  .trend-badge {
+    display: inline-block; padding: 4px 8px; background: var(--primary-light); color: var(--primary-dark);
+    border-radius: 4px; font-size: 12px; font-weight: 700; margin-top: 4px; width: fit-content;
+  }
+  .trend-badge.alert { background: var(--amber-light); color: #b45309; display: flex; align-items: center; gap: 6px; }
+  
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--amber);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  }
+
+  /* Circular Progress */
+  .circular-progress { position: relative; width: 64px; height: 64px; }
+  .circular-progress svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .circular-progress circle { fill: none; stroke-width: 6; stroke-linecap: round; }
+  .circular-progress .bg { stroke: #e2e8f0; }
+  .circular-progress .fg { stroke: var(--primary); stroke-dasharray: 175.9; stroke-dashoffset: 21; /* (1 - 0.88) * 175.9 */ }
+  .circular-progress .perc {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 14px; font-weight: 700;
+  }
+
+  /* --- Widgets Grid --- */
+  .widgets-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .widget {
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(8px);
+  }
+  .widget-full { grid-column: 1 / -1; }
+  .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .widget-title { font-size: 18px; font-weight: 700; color: var(--text-dark); }
+
+  /* --- Widget 1: SLA Terminal --- */
+  .sla-table { width: 100%; border-collapse: collapse; }
+  .sla-table th, .sla-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border-light); }
+  .sla-table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .sla-table td { font-size: 14px; font-weight: 500; }
+  
+  .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge-amber { background: var(--amber-light); color: #b45309; }
+  .badge-green { background: var(--primary-light); color: var(--primary-dark); }
+  
+  .timer { font-family: monospace; font-size: 16px; font-weight: 700; color: #dc2626; }
+  
+  .btn { 
+    padding: 8px 16px; border: none; border-radius: var(--radius-md); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: var(--transition);
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+  /* --- Widget 2: Meal Verification --- */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; }
+  .tab { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
+  .tab.active { background: var(--text-dark); color: white; }
+  
+  .upload-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: var(--radius-lg);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: #f8fafc;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone.dragover { border-color: var(--primary); background: var(--primary-light); }
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-text { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  
+  .meal-stamp {
+    margin-top: 16px; display: none; padding: 12px; border-radius: var(--radius-md);
+    background: var(--primary-light); color: var(--primary-dark); font-size: 13px; font-weight: 600;
+    align-items: center; gap: 8px; justify-content: center;
+  }
+  
+  /* --- Widget 3: Bed Visualizer --- */
+  .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .room-card { border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 16px; }
+  .room-header { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between;}
+  .bed-list { display: flex; flex-direction: column; gap: 8px; }
+  .bed-item { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: var(--transition);
+  }
+  .bed-available { background: #f1f5f9; color: var(--text-muted); border: 1px solid #cbd5e1; }
+  .bed-available:hover { border-color: var(--primary); background: white; }
+  .bed-occupied { background: var(--primary-light); color: var(--primary-dark); border: 1px solid rgba(5, 150, 105, 0.2); pointer-events: none;}
+</style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <a href="owner.html" style="text-decoration:none; color:white; display:flex; align-items:center; gap:12px;">
+        <div class="brand-logo"><span style="color:white; font-size:18px;">N</span></div>
+        NestIQ Owner
+      </a>
+    </div>
+    <div class="branch-selector">
+      <select>
+        <option>Hinjewadi Phase 1</option>
+        <option>Kharadi IT Park</option>
+        <option>Viman Nagar</option>
+      </select>
+    </div>
+    <ul class="nav-menu">
+      <li class="nav-item active"><a href="owner.html"><span class="nav-icon">📊</span> Overview</a></li>
+      <li class="nav-item"><a href="owner.html"><span class="nav-icon">🛏️</span> Bed Management</a></li>
+      <li class="nav-item"><a href="owner.html"><span class="nav-icon">🍲</span> Food Uploads</a></li>
+      <li class="nav-item"><a href="owner.html"><span class="nav-icon">⚠️</span> SLA Complaints</a></li>
+      <li class="nav-item"><a href="checkout.html"><span class="nav-icon">💰</span> Rent Ledger</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Header -->
+    <header class="header">
+      <div class="header-search">
+        <span>🔍</span>
+        <input type="text" placeholder="Search tenants, rooms, or transactions...">
+      </div>
+      <div class="header-actions">
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          Kitchen Inspection Verified
+        </div>
+        <a href="index.html" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--primary);color:white;border-radius:20px;font-size:13px;font-weight:700;text-decoration:none;transition:all 0.2s ease;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">🌐 View Marketplace</a>
+        <div class="profile-circle">ON</div>
+      </div>
+    </header>
+
+    <div class="dashboard-container">
+      
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <!-- KPI 1 -->
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <span class="kpi-title">Occupancy</span>
+            <span class="kpi-value">88%</span>
+            <span class="kpi-sub">32/36 Beds Occupied</span>
+          </div>
+          <div class="circular-progress">
+            <svg viewBox="0 0 64 64">
+              <circle class="bg" cx="32" cy="32" r="28"></circle>
+              <circle class="fg" cx="32" cy="32" r="28"></circle>
+            </svg>
+            <span class="perc">88%</span>
+          </div>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <span class="kpi-title">Active SLA Tickets</span>
+            <span class="kpi-value" id="kpi-ticket-count">1</span>
+            <span class="trend-badge alert"><div class="pulse-dot"></div> <span id="kpi-ticket-text">1 Pending Issue</span></span>
+          </div>
+          <div style="font-size: 32px;">⚠️</div>
+        </div>
+
+        <!-- KPI 3 -->
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <span class="kpi-title">Monthly Rent Collection</span>
+            <span class="kpi-value">₹1,85,000</span>
+            <span class="trend-badge">+12% vs last month</span>
+          </div>
+          <div style="font-size: 32px;">💰</div>
+        </div>
+
+        <!-- KPI 4 -->
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <span class="kpi-title">Food Hygiene Rating</span>
+            <span class="kpi-value">4.6/5 ⭐</span>
+            <span class="kpi-sub">Latest Inspection Audit</span>
+          </div>
+          <div style="font-size: 32px;">🍲</div>
+        </div>
+      </div>
+
+      <!-- Widgets Layout -->
+      <div class="widgets-layout">
+        
+        <!-- Widget 1: SLA Management -->
+        <div class="widget widget-full">
+          <div class="widget-header">
+            <h2 class="widget-title">Live Complaint SLA Management Terminal</h2>
+          </div>
+          <table class="sla-table">
+            <thead>
+              <tr>
+                <th>Issue Details</th>
+                <th>Tenant</th>
+                <th>Status</th>
+                <th>SLA Countdown</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="sla-row">
+                <td><strong>Room 202</strong> - High-Speed WiFi Drop on 2nd Floor</td>
+                <td>Rahul Sharma</td>
+                <td><span class="badge badge-amber" id="sla-badge">Pending</span></td>
+                <td><span class="timer" id="sla-timer">24:00:00</span></td>
+                <td><button class="btn btn-primary" id="btn-resolve" onclick="resolveSLA()">Mark Resolved</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Widget 2: Meal Verification -->
+        <div class="widget">
+          <div class="widget-header">
+            <h2 class="widget-title">Daily Meal Verification Terminal</h2>
+          </div>
+          <div class="tabs">
+            <div class="tab">Breakfast</div>
+            <div class="tab active">Lunch</div>
+            <div class="tab">Dinner</div>
+          </div>
+          <div class="upload-zone" id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" onclick="simulateUpload()">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Drag & Drop or Click to Upload Today's Meal Snapshot</div>
+          </div>
+          <div class="meal-stamp" id="meal-stamp">
+             ✓ Live Photo Stamped: <span id="stamp-time"></span>
+          </div>
+        </div>
+
+        <!-- Widget 3: Bed Assignment Visualizer -->
+        <div class="widget">
+          <div class="widget-header">
+            <h2 class="widget-title">Bed Assignment Visualizer</h2>
+          </div>
+          <div class="room-grid">
+            
+            <div class="room-card">
+              <div class="room-header"><span>Room 101</span> <span>2 Seater</span></div>
+              <div class="bed-list">
+                <div class="bed-item bed-occupied"><span>Bed A</span> <span>A. Kumar</span></div>
+                <div class="bed-item bed-occupied"><span>Bed B</span> <span>M. Singh</span></div>
+              </div>
+            </div>
+
+            <div class="room-card">
+              <div class="room-header"><span>Room 102</span> <span>3 Seater</span></div>
+              <div class="bed-list">
+                <div class="bed-item bed-occupied"><span>Bed A</span> <span>S. Patel</span></div>
+                <div class="bed-item bed-available" onclick="assignBed(this)"><span>Bed B</span> <span>Available (Click)</span></div>
+                <div class="bed-item bed-available" onclick="assignBed(this)"><span>Bed C</span> <span>Available (Click)</span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // --- Widget 1: SLA Timer Logic ---
+    let timerInterval;
+    let totalSeconds = 24 * 3600; // 24 hours in seconds
+
+    function formatTime(sec) {
+      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function startTimer() {
+      const timerEl = document.getElementById('sla-timer');
+      timerInterval = setInterval(() => {
+        if(totalSeconds > 0) {
+          totalSeconds--;
+          timerEl.textContent = formatTime(totalSeconds);
+        } else {
+          clearInterval(timerInterval);
+        }
+      }, 1000);
+    }
+    startTimer();
+
+    function resolveSLA() {
+      // Stop timer
+      clearInterval(timerInterval);
+      const timerEl = document.getElementById('sla-timer');
+      timerEl.style.color = 'var(--text-muted)';
+      timerEl.textContent = 'Resolved in ' + formatTime(24*3600 - totalSeconds);
+      
+      // Update badge
+      const badge = document.getElementById('sla-badge');
+      badge.className = 'badge badge-green';
+      badge.textContent = 'Resolved';
+      
+      // Update Button
+      const btn = document.getElementById('btn-resolve');
+      btn.className = 'btn btn-disabled';
+      btn.textContent = 'Resolved';
+      btn.disabled = true;
+
+      // Update KPI
+      document.getElementById('kpi-ticket-count').textContent = '0';
+      const kpiBadge = document.querySelector('.kpi-card:nth-child(2) .trend-badge');
+      kpiBadge.className = 'trend-badge';
+      kpiBadge.style.background = 'var(--primary-light)';
+      kpiBadge.style.color = 'var(--primary-dark)';
+      kpiBadge.innerHTML = 'All clear';
+    }
+
+    // --- Widget 2: Meal Upload Logic ---
+    const dropZone = document.getElementById('drop-zone');
+    const stampEl = document.getElementById('meal-stamp');
+    const stampTimeEl = document.getElementById('stamp-time');
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    }
+    function handleDragLeave(e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    }
+    function handleDrop(e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      showMealStamp();
+    }
+    function simulateUpload() {
+      showMealStamp();
+    }
+    function showMealStamp() {
+      dropZone.style.borderStyle = 'solid';
+      dropZone.style.borderColor = 'var(--primary)';
+      dropZone.innerHTML = '<div class="upload-icon">✅</div><div class="upload-text">Image Uploaded Successfully</div>';
+      
+      const now = new Date();
+      const timeString = now.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+      stampTimeEl.textContent = timeString;
+      stampEl.style.display = 'flex';
+    }
+
+    // --- Widget 3: Bed Assignment Logic ---
+    function assignBed(element) {
+      const tenantName = prompt("Enter tenant name to assign to this bed:");
+      if (tenantName && tenantName.trim() !== "") {
+        // Change classes
+        element.classList.remove('bed-available');
+        element.classList.add('bed-occupied');
+        element.onclick = null; // remove click listener
+        
+        // Update content (preserving Bed name)
+        const bedName = element.querySelector('span:first-child').textContent;
+        element.innerHTML = `<span>${bedName}</span> <span>${tenantName.trim()}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

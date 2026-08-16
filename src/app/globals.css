@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #fbfbfb; /* Subtle premium off-white */
+  --foreground: #0f172a; /* Deep slate slate-900 */
+ 
+  --primary-indigo: #4f46e5;
+  --primary-indigo-dark: #3730a3;
+  --primary-indigo-light: #e0e7ff;
+  --accent-amber: #d97706;
+  --accent-amber-light: #fef3c7;
+  --success-emerald: #10b981;
+  --success-emerald-light: #d1fae5;
+  --danger-red: #ef4444;
+  --danger-red-light: #fee2e2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--primary-indigo);
+  --color-brand-primary-dark: var(--primary-indigo-dark);
+  --color-brand-primary-light: var(--primary-indigo-light);
+  --color-brand-accent: var(--accent-amber);
+  --color-brand-accent-light: var(--accent-amber-light);
+  --color-brand-success: var(--success-emerald);
+  --color-brand-success-light: var(--success-emerald-light);
+  --color-brand-danger: var(--danger-red);
+  --color-brand-danger-light: var(--danger-red-light);
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #fbfbfb; /* Keep light theme as primary choice for TrustNest */
+    --foreground: #0f172a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  /* Subtle, modern white glassmorphism for containers */
+  .glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+    box-shadow: 0 4px 30px -4px rgba(15, 23, 42, 0.02), 0 1px 3px -1px rgba(15, 23, 42, 0.03);
+  }
+  
+  .glass-dark {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 40px -6px rgba(0, 0, 0, 0.3);
+  }
+  
+  .gradient-brand {
+    background: linear-gradient(135deg, var(--primary-indigo) 0%, var(--primary-indigo-dark) 100%);
+  }
+  
+  .gradient-success {
+    background: linear-gradient(135deg, var(--success-emerald) 0%, #047857 100%);
+  }
+  
+  .text-gradient-brand {
+    background: linear-gradient(135deg, var(--primary-indigo), #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Soft, realistic shadow styles */
+  .shadow-premium {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.02), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+  }
+  
+  .shadow-premium-lg {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 20px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  }
+  
+  .shadow-premium-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.15) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.15);
+    border-radius: 9999px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(15, 23, 42, 0.3);
+  }
+  
+  .animate-in {
+    animation: animateIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .interactive {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .interactive:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 20px -8px rgba(15, 23, 42, 0.08);
+  }
+  
+  .interactive:active {
+    transform: translateY(0);
+  }
+  
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  }
+}

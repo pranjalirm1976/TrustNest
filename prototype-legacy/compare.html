@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compare Properties - TrustNest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #059669; /* Deep Emerald Green */
+    --primary-light: #d1fae5;
+    --primary-dark: #047857;
+    --amber: #F59E0B; /* Warm Amber */
+    --amber-light: #fef3c7;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border-light: rgba(226, 232, 240, 0.8);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --transition: all 0.2s ease;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-dark);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- Navbar --- */
+  .navbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    height: 72px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-light);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+  }
+  .nav-brand {
+    font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-dark); text-decoration: none;
+  }
+  .nav-brand-icon {
+    width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;
+  }
+  .btn-outline {
+    padding: 8px 16px; border: 1.5px solid var(--border-light); border-radius: var(--radius-md);
+    background: transparent; font-weight: 600; font-size: 14px; cursor: pointer; color: var(--text-dark);
+    transition: var(--transition); display: flex; align-items: center; gap: 6px;
+  }
+  .btn-outline:hover { border-color: var(--text-dark); }
+
+  /* --- Hero Section --- */
+  .hero {
+    padding: 120px 24px 40px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .hero-title {
+    font-size: clamp(32px, 4vw, 48px); font-weight: 800; color: var(--text-dark); margin-bottom: 12px; letter-spacing: -1px;
+  }
+  .hero-subtitle {
+    font-size: 18px; color: var(--text-muted); max-width: 600px; margin: 0 auto;
+  }
+
+  /* --- Comparison Matrix Container --- */
+  .compare-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  /* --- CSS Grid Layout --- */
+  .compare-grid {
+    display: grid;
+    /* 1 Feature column (200px) + 3 Property columns */
+    grid-template-columns: 200px repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    position: relative;
+    margin-top: -30px;
+  }
+
+  /* --- Sticky Header Cards --- */
+  .compare-header-row {
+    display: contents;
+  }
+  .header-cell {
+    position: sticky;
+    top: 72px; /* Below navbar */
+    z-index: 100;
+    padding: 16px 0 24px;
+    background: var(--bg-color); /* To hide content passing beneath */
+  }
+  .header-cell.empty { background: transparent; }
+
+  .property-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-md);
+    display: flex; flex-direction: column; gap: 12px;
+    transition: var(--transition);
+  }
+  .property-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  .property-img {
+    width: 100%; height: 140px; border-radius: var(--radius-md); object-fit: cover; background: #e2e8f0;
+  }
+  .property-name { font-size: 18px; font-weight: 700; color: var(--text-dark); }
+  .property-price { font-size: 20px; font-weight: 800; color: var(--primary); }
+  .property-price span { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; width: fit-content; }
+  .badge-hygiene { background: var(--amber-light); color: #b45309; }
+
+  .btn-primary {
+    padding: 12px; width: 100%; border: none; border-radius: var(--radius-md);
+    background: var(--primary); color: white; font-weight: 700; font-size: 14px;
+    cursor: pointer; transition: var(--transition); font-family: inherit;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+
+  /* --- Section Headers --- */
+  .section-title {
+    grid-column: 1 / -1;
+    font-size: 20px; font-weight: 800; margin: 40px 0 20px; padding-bottom: 12px;
+    border-bottom: 2px solid var(--border-light); color: var(--text-dark);
+  }
+
+  /* --- Matrix Rows --- */
+  .matrix-row { display: contents; }
+  .feature-label {
+    padding: 24px 16px; font-weight: 600; color: var(--text-muted); font-size: 14px;
+    display: flex; align-items: center; border-bottom: 1px solid var(--border-light);
+  }
+  .data-cell {
+    background: var(--card-bg);
+    padding: 24px 20px; border: 1px solid var(--border-light); border-radius: var(--radius-md);
+    display: flex; flex-direction: column; justify-content: center;
+    margin-bottom: 8px; font-size: 14px; font-weight: 500;
+  }
+  
+  /* Feature specific styles */
+  .icon-check { color: var(--primary); font-size: 18px; font-weight: bold; }
+  .icon-cross { color: #ef4444; font-size: 18px; font-weight: bold; }
+  .data-cell.highlight {
+    background: var(--primary-light);
+    border-color: var(--primary);
+  }
+  .data-cell.highlight .data-text { color: var(--primary-dark); font-weight: 700; }
+  
+  .micro-badge {
+    background: var(--primary); color: white; font-size: 10px; font-weight: 800;
+    padding: 2px 8px; border-radius: 12px; width: fit-content; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* --- Food Menu Tabs --- */
+  .food-tabs-container { grid-column: 1 / -1; margin-bottom: 16px; }
+  .food-tabs {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .food-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 8px 16px; border: 1.5px solid var(--border-light); border-radius: 20px;
+    background: var(--card-bg); font-weight: 600; font-size: 13px; cursor: pointer;
+    color: var(--text-muted); transition: var(--transition); white-space: nowrap; font-family: inherit;
+  }
+  .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .tab-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .compare-grid {
+      grid-template-columns: 120px repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .property-img { height: 100px; }
+    .property-name { font-size: 15px; }
+    .property-price { font-size: 16px; }
+    .data-cell, .feature-label { padding: 12px; font-size: 13px; }
+  }
+  @media (max-width: 768px) {
+    .compare-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .feature-label { display: none; } /* Hide labels on mobile, rely on context */
+    .data-cell::before {
+      content: attr(data-label); display: block; font-size: 11px; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .hero-title { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">
+      <div class="nav-brand-icon">N</div>
+      NestIQ
+    </a>
+    <a href="index.html" class="btn-outline" style="text-decoration:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to Search</a>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <h1 class="hero-title">Compare Spaces. Choose the Best Diet & Stay.</h1>
+    <p class="hero-subtitle">Make an informed decision by comparing amenities, hygiene, and daily food menus side-by-side.</p>
+  </header>
+
+  <!-- Main Comparison -->
+  <main class="compare-container">
+    <div class="compare-grid">
+      
+      <!-- Sticky Headers -->
+      <div class="compare-header-row">
+        <div class="header-cell empty"></div>
+        
+        <!-- Prop 1 -->
+        <div class="header-cell">
+          <div class="property-card" style="border-color: var(--primary);">
+            <div class="property-img" style="background: linear-gradient(45deg, #10b981, #059669);"></div>
+            <div>
+              <div class="badge badge-hygiene">⭐ 4.8/5 Hygiene</div>
+              <h3 class="property-name" style="margin-top: 8px;">Emerald Elite (TrustNest)</h3>
+              <div class="property-price">₹12,000<span>/mo</span></div>
+            </div>
+            <a href="checkout.html" class="btn-primary" style="text-decoration:none;display:block;text-align:center;">Book This Space</a>
+          </div>
+        </div>
+
+        <!-- Prop 2 -->
+        <div class="header-cell">
+          <div class="property-card">
+            <div class="property-img" style="background: linear-gradient(45deg, #94a3b8, #64748b);"></div>
+            <div>
+              <div class="badge badge-hygiene" style="background:#f1f5f9; color:#475569;">⭐ 3.9/5 Hygiene</div>
+              <h3 class="property-name" style="margin-top: 8px;">Stanza Frankfurt</h3>
+              <div class="property-price">₹13,500<span>/mo</span></div>
+            </div>
+            <a href="checkout.html" class="btn-primary" style="background: var(--text-dark);text-decoration:none;display:block;text-align:center;">Book This Space</a>
+          </div>
+        </div>
+
+        <!-- Prop 3 -->
+        <div class="header-cell">
+          <div class="property-card">
+            <div class="property-img" style="background: linear-gradient(45deg, #cbd5e1, #94a3b8);"></div>
+            <div>
+              <div class="badge badge-hygiene" style="background:#f1f5f9; color:#475569;">⭐ 4.1/5 Hygiene</div>
+              <h3 class="property-name" style="margin-top: 8px;">Zolo Clayton</h3>
+              <div class="property-price">₹11,000<span>/mo</span></div>
+            </div>
+            <a href="checkout.html" class="btn-primary" style="background: var(--text-dark);text-decoration:none;display:block;text-align:center;">Book This Space</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Amenities & SLA -->
+      <div class="section-title">Amenities & SLA</div>
+      
+      <div class="matrix-row">
+        <div class="feature-label">24-Hour Resolution SLA</div>
+        <div class="data-cell highlight" data-label="24H SLA">
+          <div class="icon-check">✓ Guaranteed</div>
+          <span style="font-size:12px; color:var(--text-muted); margin-top:4px;">Cashback on delay</span>
+        </div>
+        <div class="data-cell" data-label="24H SLA"><span class="icon-cross">✗ 3-5 Business Days</span></div>
+        <div class="data-cell" data-label="24H SLA"><span class="icon-cross">✗ Best Effort</span></div>
+      </div>
+
+      <div class="matrix-row">
+        <div class="feature-label">Bed Availability</div>
+        <div class="data-cell" data-label="Availability">
+          <span style="color:var(--primary); font-weight:800;">2 Beds Left</span> (Live)
+        </div>
+        <div class="data-cell" data-label="Availability">Waitlisted</div>
+        <div class="data-cell" data-label="Availability">Unknown</div>
+      </div>
+
+      <div class="matrix-row">
+        <div class="feature-label">Security</div>
+        <div class="data-cell" data-label="Security">Biometric + 24/7 CCTV</div>
+        <div class="data-cell" data-label="Security">Guard Only</div>
+        <div class="data-cell" data-label="Security">Guard Only</div>
+      </div>
+
+      <!-- Section: Daily Food Menu -->
+      <div class="section-title">Weekly Food Menu Comparison</div>
+      
+      <div class="food-tabs-container">
+        <div class="food-tabs" id="dayTabs">
+          <button class="tab-btn active" onclick="switchDay('Monday')">Monday</button>
+          <button class="tab-btn" onclick="switchDay('Tuesday')">Tuesday</button>
+          <button class="tab-btn" onclick="switchDay('Wednesday')">Wednesday</button>
+          <button class="tab-btn" onclick="switchDay('Thursday')">Thursday</button>
+          <button class="tab-btn" onclick="switchDay('Friday')">Friday</button>
+          <button class="tab-btn" onclick="switchDay('Saturday')">Saturday</button>
+          <button class="tab-btn" onclick="switchDay('Sunday')">Sunday</button>
+        </div>
+      </div>
+
+      <!-- Breakfast -->
+      <div class="matrix-row">
+        <div class="feature-label">Breakfast</div>
+        <div class="data-cell highlight" data-label="Breakfast">
+          <div class="micro-badge">👑 Top Rated Meal</div>
+          <span class="data-text" id="b-1">Poha + Jalebi + Tea/Coffee</span>
+        </div>
+        <div class="data-cell" data-label="Breakfast" id="b-2">Bread Butter + Tea</div>
+        <div class="data-cell" data-label="Breakfast" id="b-3">Upma + Coffee</div>
+      </div>
+
+      <!-- Lunch -->
+      <div class="matrix-row">
+        <div class="feature-label">Lunch</div>
+        <div class="data-cell highlight" data-label="Lunch">
+          <div class="micro-badge">👑 Top Rated Meal</div>
+          <span class="data-text" id="l-1">Paneer Butter Masala, Roti, Rice, Dal, Salad</span>
+        </div>
+        <div class="data-cell" data-label="Lunch" id="l-2">Aloo Gobi, Roti, Dal</div>
+        <div class="data-cell" data-label="Lunch" id="l-3">Mix Veg, Roti, Rice</div>
+      </div>
+
+      <!-- Dinner -->
+      <div class="matrix-row">
+        <div class="feature-label">Dinner</div>
+        <div class="data-cell highlight" data-label="Dinner">
+          <div class="micro-badge">👑 Top Rated Meal</div>
+          <span class="data-text" id="d-1">Veg Biryani, Raita, Gulab Jamun</span>
+        </div>
+        <div class="data-cell" data-label="Dinner" id="d-2">Dal Khichdi</div>
+        <div class="data-cell" data-label="Dinner" id="d-3">Roti, Dal Makhani</div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // Food Data state logic
+    const menuData = {
+      'Monday': {
+        p1: ['Poha + Jalebi + Tea/Coffee', 'Paneer Butter Masala, Roti, Rice, Dal', 'Veg Biryani, Raita, Gulab Jamun'],
+        p2: ['Bread Butter + Tea', 'Aloo Gobi, Roti, Dal', 'Dal Khichdi'],
+        p3: ['Upma + Coffee', 'Mix Veg, Roti, Rice', 'Roti, Dal Makhani']
+      },
+      'Tuesday': {
+        p1: ['Idli Sambar + Chutney + Tea', 'Rajma Chawal, Salad, Papad', 'Chole Bhature, Lassi'],
+        p2: ['Toast + Jam', 'Dal Tadka, Rice', 'Puri Bhaji'],
+        p3: ['Poha + Tea', 'Rajma, Roti', 'Khichdi']
+      },
+      'Wednesday': {
+        p1: ['Aloo Paratha + Curd + Pickle', 'Dal Makhani, Jeera Rice, Roti', 'Veg Noodles, Manchurian'],
+        p2: ['Cornflakes + Milk', 'Jeera Aloo, Roti', 'Dal Rice'],
+        p3: ['Bread Omelet', 'Kadhi Pakora, Rice', 'Veg Pulao']
+      },
+      'Thursday': {
+        p1: ['Masala Dosa + Filter Coffee', 'Kofta Curry, Roti, Rice', 'Palak Paneer, Naan'],
+        p2: ['Upma', 'Mix Veg, Dal', 'Aloo Matar, Roti'],
+        p3: ['Idli', 'Dal Fry, Rice', 'Lemon Rice']
+      },
+      'Friday': {
+        p1: ['Puri Bhaji + Halwa', 'Veg Thali (Premium)', 'Pav Bhaji, Salad'],
+        p2: ['Poha', 'Dal, Roti, Rice', 'Khichdi'],
+        p3: ['Bread Butter', 'Aloo Palak, Roti', 'Veg Fried Rice']
+      },
+      'Saturday': {
+        p1: ['Misal Pav + Tea', 'Chicken Curry / Veg Korma, Rice', 'Pizza Slice, Garlic Bread'],
+        p2: ['Toast', 'Dal, Rice', 'Noodles'],
+        p3: ['Upma', 'Mix Veg', 'Dal Rice']
+      },
+      'Sunday': {
+        p1: ['Chole Bhature + Sweet', 'Special Sunday Thali', 'Hakka Noodles, Chilli Paneer'],
+        p2: ['Aloo Paratha', 'Dal Makhani', 'Khichdi'],
+        p3: ['Poha', 'Rajma Rice', 'Puri Bhaji']
+      }
+    };
+
+    function switchDay(day) {
+      // Update Tabs
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(t => {
+        if(t.innerText === day) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+
+      // Update Data
+      const data = menuData[day];
+      
+      // Breakfast
+      document.getElementById('b-1').innerText = data.p1[0];
+      document.getElementById('b-2').innerText = data.p2[0];
+      document.getElementById('b-3').innerText = data.p3[0];
+
+      // Lunch
+      document.getElementById('l-1').innerText = data.p1[1];
+      document.getElementById('l-2').innerText = data.p2[1];
+      document.getElementById('l-3').innerText = data.p3[1];
+
+      // Dinner
+      document.getElementById('d-1').innerText = data.p1[2];
+      document.getElementById('d-2').innerText = data.p2[2];
+      document.getElementById('d-3').innerText = data.p3[2];
+    }
+  </script>
+</body>
+</html>
