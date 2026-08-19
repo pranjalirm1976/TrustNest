@@ -1,0 +1,72 @@
+'use client'
+
+import { useState } from 'react'
+import { Calendar, Clock, ChevronDown, CheckCircle } from 'lucide-react'
+
+export default function CheckAvailabilityCard() {
+  const [date, setDate] = useState('2026-08-20')
+  const [duration, setDuration] = useState('6 Months')
+  const [roomType, setRoomType] = useState('Any')
+
+  const handleCheck = () => {
+    alert(`Checking availability starting from ${date} for ${duration} (${roomType} room type)`)
+  }
+
+  return (
+    <div className="bg-white border border-slate-205 rounded-2xl p-6 shadow-premium-sm flex flex-col gap-5">
+      <div className="flex items-center gap-2 text-slate-800">
+        <Calendar className="w-5 h-5 text-brand-primary" />
+        <h3 className="text-sm font-extrabold uppercase tracking-wider">Check Availability</h3>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {/* Check-in Date */}
+        <div className="flex flex-col gap-1 text-left">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Check-in Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full bg-[#fbfbfb] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-850 focus:outline-none focus:border-brand-primary"
+          />
+        </div>
+
+        {/* Duration */}
+        <div className="flex flex-col gap-1 text-left">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Duration</label>
+          <select
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            className="w-full bg-[#fbfbfb] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-850 focus:outline-none focus:border-brand-primary cursor-pointer"
+          >
+            <option>3 Months</option>
+            <option>6 Months</option>
+            <option>12 Months</option>
+          </select>
+        </div>
+
+        {/* Room Type */}
+        <div className="flex flex-col gap-1 text-left">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room Type</label>
+          <select
+            value={roomType}
+            onChange={(e) => setRoomType(e.target.value)}
+            className="w-full bg-[#fbfbfb] border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-850 focus:outline-none focus:border-brand-primary cursor-pointer"
+          >
+            <option>Any</option>
+            <option>Single Occupancy</option>
+            <option>Double Sharing</option>
+            <option>Triple Sharing</option>
+          </select>
+        </div>
+      </div>
+
+      <button
+        onClick={handleCheck}
+        className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs py-3 rounded-xl shadow-premium transition-all duration-200 cursor-pointer"
+      >
+        Check Availability
+      </button>
+    </div>
+  )
+}

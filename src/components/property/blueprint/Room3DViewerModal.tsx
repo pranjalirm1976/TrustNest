@@ -1,6 +1,8 @@
 'use client'
 
-import { X, ShieldCheck, Box, Compass, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { X, ShieldCheck, Box, Compass, RefreshCw, Heart, Info, Check, MapPin, Eye } from 'lucide-react'
+import Image from 'next/image'
 
 type Bed = {
   id: string
@@ -27,6 +29,8 @@ export default function Room3DViewerModal({
   onClose,
   priceFrom,
 }: Room3DViewerModalProps) {
+  const [activeThumb, setActiveThumb] = useState(0)
+
   // Sharing format
   const getSharingType = (capacity: number) => {
     if (capacity === 0) return 'Common Area'
@@ -45,130 +49,343 @@ export default function Room3DViewerModal({
 
   const roomPrice = calculatePrice(room.capacity)
 
+  // Mock thumbnails for Room 101 slider
+  const sliderImages = [
+    'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80',
+  ]
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       {/* Modal Container */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl w-full max-w-4xl shadow-premium-lg overflow-hidden flex flex-col lg:flex-row h-auto max-h-[90vh] lg:h-[550px] animate-in">
+      <div className="bg-white border border-slate-205 rounded-3xl w-full max-w-6xl shadow-premium-lg flex flex-col my-8 overflow-hidden animate-in">
         
-        {/* Left Side: 3D Canvas / Render Container (60% width) */}
-        <div className="flex-1 bg-slate-950 p-6 flex flex-col relative min-h-[300px] lg:h-full justify-between select-none">
-          {/* HUD Info */}
-          <div className="flex justify-between items-center z-10">
-            <div className="bg-white/10 backdrop-blur border border-white/10 px-3 py-1.5 rounded-xl text-white flex items-center gap-2">
-              <Box className="w-4 h-4 text-brand-primary animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-widest font-mono">3D Room Visualizer</span>
-            </div>
-            
-            <div className="flex gap-2">
-              <button 
-                onClick={() => alert('Simulated reload / recanvas')}
-                className="bg-white/10 hover:bg-white/20 border border-white/10 p-2 rounded-xl text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Reset Camera View"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+        {/* Header Bar exactly matching Mockup 5 */}
+        <div className="bg-white px-8 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Room {room.roomNumber}</h2>
+            <span className="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded border border-emerald-200">
+              Available
+            </span>
+            <div className="flex gap-2 text-xs font-semibold text-slate-500 pl-2 border-l border-slate-200 font-mono">
+              <span>1st Floor</span>
+              <span>•</span>
+              <span>{getSharingType(room.capacity)}</span>
+              <span>•</span>
+              <span>{room.capacity} Beds</span>
             </div>
           </div>
 
-          {/* 3D RENDER CANVAS CONTAINER MOCKUP */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-6">
-            
-            {/* Styled CSS 3D Isometric Placeholder Box representing a bed/room block */}
-            <div className="relative w-48 h-48 flex items-center justify-center">
-              {/* Outer boundary representation */}
-              <div className="absolute inset-0 border border-dashed border-white/20 rounded-2xl animate-spin-slow pointer-events-none" />
-
-              {/* Refined CSS 3D Box */}
-              <div 
-                className="w-24 h-24 relative transform-style-3d rotate-x-30 rotate-y-45 transition-transform duration-1000"
-                style={{ transform: 'rotateX(60deg) rotateZ(45deg)' }}
-              >
-                {/* Top face */}
-                <div className="absolute inset-0 bg-indigo-500/30 border border-brand-primary/80 transform translate-z-12" />
-                {/* Front face */}
-                <div className="absolute left-0 bottom-0 w-24 h-12 bg-indigo-600/40 border border-brand-primary/80 origin-bottom transform rotate-x-90" />
-                {/* Side face */}
-                <div className="absolute right-0 bottom-0 w-12 h-24 bg-indigo-700/50 border border-brand-primary/80 origin-bottom-right transform rotate-y-90 rotate-z-90" />
-              </div>
-            </div>
-
-            {/* Canvas Loader status text */}
-            <div className="flex flex-col items-center gap-1.5 text-center mt-6">
-              <span className="text-white font-extrabold text-sm tracking-tight">3D Render Canvas Container</span>
-              <p className="text-xs text-slate-400 max-w-xs leading-normal">
-                `Three.js` WebGL loader ready. Canvas is configured to load `.glb` asset asynchronously.
-              </p>
-            </div>
-
-          </div>
-
-          {/* Compass overlay */}
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest z-10">
-            <Compass className="w-3.5 h-3.5 text-slate-500" />
-            <span>North Orientation</span>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => alert('Room saved to favorites!')}
+              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs px-4 py-2 rounded-xl shadow-premium-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <Heart className="w-3.5 h-3.5" />
+              <span>Save Room</span>
+            </button>
+            <button 
+              onClick={() => alert(`Initiating checkout process for Room ${room.roomNumber}`)}
+              className="bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-premium cursor-pointer"
+            >
+              Book Now
+            </button>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-650 border border-slate-200 p-2 rounded-xl hover:bg-slate-50 transition-all cursor-pointer shrink-0"
+              title="Close Modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Right Side: Room parameters & CTAs (40% width) */}
-        <div className="w-full lg:w-80 bg-white p-8 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-200/80 overflow-y-auto">
-          <div className="flex flex-col gap-6">
+        {/* Inner Content Grid */}
+        <div className="p-8 flex flex-col gap-8 max-h-[75vh] overflow-y-auto scrollbar-thin">
+          
+          {/* TOP ROW: Photo Slider, 3D Canvas, Room Info Column */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             
-            {/* Modal header */}
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Room {room.roomNumber}</h3>
-                <span className="text-xs font-semibold text-slate-500">{getSharingType(room.capacity)}</span>
+            {/* 1. Actual Photo Slider (4 columns) */}
+            <div className="lg:col-span-4 flex flex-col gap-3">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200/60 bg-slate-100">
+                <Image
+                  src={sliderImages[activeThumb]}
+                  alt={`Room ${room.roomNumber} photo`}
+                  fill
+                  className="object-cover"
+                />
+                <span className="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[8px] font-extrabold uppercase text-white font-mono">
+                  Actual Photo
+                </span>
               </div>
+
+              {/* Thumbnails row */}
+              <div className="grid grid-cols-4 gap-2">
+                {sliderImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveThumb(idx)}
+                    className={`relative aspect-[4/3] rounded-lg overflow-hidden border transition-all cursor-pointer ${
+                      activeThumb === idx ? 'border-brand-primary ring-2 ring-indigo-50' : 'border-slate-200 hover:opacity-80'
+                    }`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`Thumb ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. 3D Room Viewer Canvas (5 columns) */}
+            <div className="lg:col-span-5 bg-slate-950 p-5 rounded-2xl flex flex-col justify-between relative select-none overflow-hidden min-h-[250px]">
+              <div className="flex justify-between items-center z-10">
+                <div className="bg-white/10 backdrop-blur border border-white/10 px-2.5 py-1 rounded-lg text-white flex items-center gap-1.5">
+                  <Box className="w-3.5 h-3.5 text-brand-primary animate-pulse" />
+                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono">3D Room View</span>
+                </div>
+                
+                <button 
+                  onClick={() => alert('Recentering 3D model camera...')}
+                  className="bg-white/10 hover:bg-white/20 border border-white/10 p-1.5 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Reset View"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* CSS 3D Room isometric visualizer mockup */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                <div className="relative w-40 h-40 flex items-center justify-center">
+                  <div className="absolute inset-0 border border-dashed border-white/10 rounded-full animate-spin-slow" />
+                  
+                  {/* Detailed 3D Room Cut-out mockup */}
+                  <div 
+                    className="w-28 h-20 relative"
+                    style={{ transform: 'rotateX(55deg) rotateZ(45deg)', transformStyle: 'preserve-3d' }}
+                  >
+                    {/* Floor */}
+                    <div className="absolute inset-0 bg-[#312e81] border border-white/20" />
+                    {/* Back Wall */}
+                    <div className="absolute left-0 top-0 h-10 w-28 bg-[#1e1b4b] origin-top transform -rotate-x-90 border-r border-white/10" />
+                    {/* Left Wall */}
+                    <div className="absolute left-0 top-0 h-20 w-10 bg-[#1e1b4b] origin-left transform -rotate-y-90 border-b border-white/10" />
+                    {/* Double beds representation */}
+                    <div className="absolute bottom-2 left-2 w-10 h-7 bg-emerald-500/80 border border-white/30 transform translate-z-2" />
+                    <div className="absolute top-2 right-2 w-10 h-7 bg-emerald-500/80 border border-white/30 transform translate-z-2" />
+                    {/* Wardrobe */}
+                    <div className="absolute bottom-2 right-2 w-5 h-8 bg-amber-600/80 border border-white/30 transform translate-z-6" />
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => alert('Entering fullscreen 3D model...')}
+                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-[9px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer mt-4 flex items-center gap-1"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>View in Fullscreen</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-widest z-10">
+                <Compass className="w-3 h-3 text-slate-500" />
+                <span>North Orientation</span>
+              </div>
+            </div>
+
+            {/* 3. Room Information column (3 columns) */}
+            <div className="lg:col-span-3 border border-slate-205 rounded-2xl p-5 flex flex-col justify-between">
+              <div className="flex flex-col gap-4">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono border-b border-slate-200 pb-1.5">
+                  Room Information
+                </h4>
+                
+                <div className="flex flex-col gap-2.5 text-xs font-semibold text-slate-700">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Room Type</span>
+                    <span className="text-slate-900">{getSharingType(room.capacity)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Total Beds</span>
+                    <span className="text-slate-900">{room.capacity}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Available Beds</span>
+                    <span className="text-emerald-700 font-extrabold">
+                      {room.beds.filter(b => b.status === 'VACANT').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Occupied Beds</span>
+                    <span className="text-slate-900">
+                      {room.beds.filter(b => b.status === 'OCCUPIED').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Room Size</span>
+                    <span className="text-slate-900 font-mono">16 x 12 ft</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Floor</span>
+                    <span className="text-slate-900">1st Floor</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Room Facing</span>
+                    <span className="text-slate-900">East</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-100 pt-2 mt-1">
+                    <span className="text-slate-400">Rent / Bed</span>
+                    <span className="text-slate-900 font-extrabold">₹{roomPrice.toLocaleString('en-IN')}/mo</span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3 flex gap-2.5 mt-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-emerald-950 leading-relaxed font-semibold">
+                    All beds are currently available. Move in anytime.
+                  </p>
+                </div>
+              </div>
+
               <button
-                onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 border border-slate-200 p-2 rounded-xl hover:bg-slate-50 transition-all cursor-pointer shrink-0"
+                onClick={() => alert('Opening chat thread with property owner')}
+                className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs py-3 rounded-xl shadow-premium cursor-pointer mt-4 transition-colors"
               >
-                <X className="w-4 h-4" />
+                Contact Owner
               </button>
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-slate-100 w-full" />
-
-            {/* Room Parameters lists */}
-            <div className="flex flex-col gap-4 text-xs font-semibold text-slate-700">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-bold uppercase tracking-widest">Rent Rate</span>
-                <span className="text-slate-900 font-extrabold text-sm">₹{roomPrice.toLocaleString('en-IN')}/mo</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-bold uppercase tracking-widest">Washroom</span>
-                <span className="text-slate-900 font-bold">
-                  {room.hasWashroom ? 'Private Attached' : 'Shared Common'}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-bold uppercase tracking-widest">Bed Status</span>
-                <span className="text-slate-900 font-bold">
-                  {room.beds.filter(b => b.status === 'VACANT').length} / {room.capacity} Vacant
-                </span>
-              </div>
-            </div>
-
-            {/* Guarantee Tag */}
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex gap-3 mt-2">
-              <ShieldCheck className="w-5 h-5 text-brand-primary shrink-0 mt-0.5" />
-              <p className="text-[10px] text-indigo-950 leading-relaxed">
-                This room layout matches exactly our certified blueprint checks. Click book below to claim a vacant bed.
-              </p>
             </div>
 
           </div>
 
-          {/* Book Action CTA */}
-          <button
-            onClick={() => alert(`Initiating checkout process for Room ${room.roomNumber}`)}
-            className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-sm py-3.5 rounded-xl shadow-premium hover:shadow-premium-lg transition-all duration-200 mt-8 cursor-pointer"
-          >
-            Book Bed in Room {room.roomNumber}
-          </button>
+          {/* MID ROW: Features & Amenities and Why residents love this room */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            
+            {/* Features (8 columns) */}
+            <div className="lg:col-span-8 bg-slate-50/70 border border-slate-150 p-6 rounded-2xl">
+              <h3 className="text-xs font-bold text-slate-405 uppercase tracking-widest font-mono border-b border-slate-200 pb-2 mb-4">
+                Room Features & Amenities
+              </h3>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold text-slate-700">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Attached Bathroom</span>
+                  <span className="text-slate-950 font-extrabold">1</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Study Table</span>
+                  <span className="text-slate-950 font-extrabold">{room.capacity}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Chair</span>
+                  <span className="text-slate-950 font-extrabold">{room.capacity}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Wardrobe</span>
+                  <span className="text-slate-950 font-extrabold">{room.capacity}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Bed with Mattress</span>
+                  <span className="text-slate-950 font-extrabold">{room.capacity}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Window</span>
+                  <span className="text-slate-950 font-extrabold">1</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">AC Point</span>
+                  <span className="text-slate-950 font-extrabold">1</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Wi-Fi</span>
+                  <span className="text-slate-950 font-extrabold">High Speed</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Why residents love (4 columns) */}
+            <div className="lg:col-span-4 bg-white border border-slate-205 p-6 rounded-2xl shadow-premium-sm flex flex-col gap-3">
+              <h3 className="text-xs font-bold text-slate-405 uppercase tracking-widest font-mono border-b border-slate-200 pb-2 mb-2">
+                Why Residents Love This Room
+              </h3>
+              <ul className="flex flex-col gap-2.5 text-xs font-semibold text-slate-700">
+                <li className="flex items-start gap-2 text-slate-650">
+                  <Check className="w-3.5 h-3.5 text-brand-success shrink-0 mt-0.5" />
+                  <span>Spacious and well-ventilated</span>
+                </li>
+                <li className="flex items-start gap-2 text-slate-650">
+                  <Check className="w-3.5 h-3.5 text-brand-success shrink-0 mt-0.5" />
+                  <span>Large study area for each bed</span>
+                </li>
+                <li className="flex items-start gap-2 text-slate-650">
+                  <Check className="w-3.5 h-3.5 text-brand-success shrink-0 mt-0.5" />
+                  <span>Ample storage space</span>
+                </li>
+                <li className="flex items-start gap-2 text-slate-650">
+                  <Check className="w-3.5 h-3.5 text-brand-success shrink-0 mt-0.5" />
+                  <span>Natural light and clean environment</span>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* PROXIMITY FOOTER: Nearby this PG */}
+          <div className="border-t border-slate-100 pt-6 flex flex-col gap-4">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+              Nearby this PG
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 text-xs font-semibold text-slate-750">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">Brahma Tiffin</p>
+                  <span className="text-[9px] text-slate-400 font-mono">1.2 km away</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">Laundry Hub</p>
+                  <span className="text-[9px] text-slate-400 font-mono">750 m away</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">D Mart</p>
+                  <span className="text-[9px] text-slate-400 font-mono">1.8 km away</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">MedPlus Pharmacy</p>
+                  <span className="text-[9px] text-slate-400 font-mono">1.1 km away</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">Hinjawadi Bus Stop</p>
+                  <span className="text-[9px] text-slate-400 font-mono">950 m away</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-extrabold text-slate-900 truncate">Café Coffee Day</p>
+                  <span className="text-[9px] text-slate-400 font-mono">1.3 km away</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>

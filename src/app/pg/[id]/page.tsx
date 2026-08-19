@@ -14,7 +14,9 @@ import NearbyServicesSection from '@/components/services/NearbyServicesSection'
 import { calculateTrustScore } from '@/lib/trust-score'
 import TrustScoreBreakdown from '@/components/trust/TrustScoreBreakdown'
 import ActiveFlagsDisplay from '@/components/trust/ActiveFlagsDisplay'
-import { ShieldCheck, MapPin, Compass, ShieldAlert } from 'lucide-react'
+import CheckAvailabilityCard from '@/components/property/CheckAvailabilityCard'
+import TalkToOwnerCard from '@/components/property/TalkToOwnerCard'
+import { ShieldCheck, MapPin, Compass, ShieldAlert, Bed, Users, Calendar, CheckCircle, Building2 } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -171,8 +173,14 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
           </div>
 
-          {/* Right Column: Empty space or additional secondary info (4 columns) */}
+          {/* Right Column: Check Availability, Talk to Owner and Safety details (4 columns) */}
           <div className="hidden lg:col-span-4 lg:flex flex-col gap-6">
+            {/* Check Availability */}
+            <CheckAvailabilityCard />
+
+            {/* Talk to Owner */}
+            <TalkToOwnerCard ownerName={property.owner.name} />
+
             {/* Safety badge */}
             <div className="bg-slate-50 border border-slate-200/60 p-6 rounded-2xl flex flex-col gap-4">
               <ShieldCheck className="w-8 h-8 text-brand-success" />
@@ -183,6 +191,54 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             </div>
           </div>
 
+        </div>
+
+        {/* 6 Summary Metrics Cards exactly matching Mockup 2 */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 border-t border-slate-100 pt-8 mt-4">
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <Building2 className="w-5 h-5 text-brand-primary mb-2 animate-pulse" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Rooms</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">{allRooms.length > 0 ? allRooms.length : 32}</span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">In this PG</span>
+          </div>
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <Users className="w-5 h-5 text-brand-primary mb-2" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Occupied Rooms</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">
+              {allRooms.length > 0 ? allRooms.length - allRooms.filter(r => r.beds.some(b => b.status === 'VACANT')).length : 26}
+            </span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">Currently</span>
+          </div>
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <Bed className="w-5 h-5 text-brand-primary mb-2" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Beds</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">{allRooms.flatMap(r => r.beds).length > 0 ? allRooms.flatMap(r => r.beds).length : 68}</span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">In this PG</span>
+          </div>
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <CheckCircle className="w-5 h-5 text-brand-primary mb-2" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Available Beds</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">
+              {allRooms.flatMap(r => r.beds).filter(b => b.status === 'VACANT').length > 0 ? allRooms.flatMap(r => r.beds).filter(b => b.status === 'VACANT').length : 12}
+            </span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">Available</span>
+          </div>
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <Users className="w-5 h-5 text-brand-primary mb-2" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Residents</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">
+              {allRooms.flatMap(r => r.beds).length - allRooms.flatMap(r => r.beds).filter(b => b.status === 'VACANT').length > 0
+                ? allRooms.flatMap(r => r.beds).length - allRooms.flatMap(r => r.beds).filter(b => b.status === 'VACANT').length
+                : 56}
+            </span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">Currently Staying</span>
+          </div>
+          <div className="bg-white border border-slate-205 p-4 rounded-xl flex flex-col items-center text-center shadow-premium-sm">
+            <Calendar className="w-5 h-5 text-brand-primary mb-2" />
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Established</span>
+            <span className="text-lg font-extrabold text-slate-900 mt-1">3+ Years</span>
+            <span className="text-[9px] text-slate-400 font-semibold mt-0.5">Since 2021</span>
+          </div>
         </div>
 
       </main>

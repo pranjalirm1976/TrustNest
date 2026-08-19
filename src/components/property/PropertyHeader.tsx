@@ -1,6 +1,7 @@
 'use client'
 
-import { MapPin, Phone, Building2, Calendar, CreditCard } from 'lucide-react'
+import { MapPin, Wifi, Wind, Utensils, Shield, Heart, Share2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 interface PropertyHeaderProps {
   name: string
@@ -20,89 +21,141 @@ export default function PropertyHeader({
   ownerName,
 }: PropertyHeaderProps) {
   return (
-    <div className="flex flex-col lg:flex-row justify-between items-start gap-8 py-8 border-b border-slate-100">
+    <div className="flex flex-col gap-6 py-6 border-b border-slate-100">
       
-      {/* Left Area: Name, details, location */}
-      <div className="flex flex-col gap-4 flex-1">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Gender tag */}
-          <span className={`text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full shadow-premium-sm ${
-            gender === 'FEMALE' ? 'bg-pink-100 text-pink-700' :
-            gender === 'MALE' ? 'bg-blue-100 text-blue-700' :
-            'bg-slate-100 text-slate-700'
-          }`}>
-            {gender === 'UNISEX' ? 'Unisex Co-Living' : `${gender} Only stay`}
-          </span>
-
-          {/* Verified Badge */}
-          <span className="bg-brand-success-light text-brand-success text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full shadow-premium-sm border border-brand-success/15 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-brand-success rounded-full animate-pulse" />
-            Verified Nest
-          </span>
+      {/* Top row: Breadcrumbs and Share/Save actions */}
+      <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+        <div className="flex items-center gap-1.5">
+          <Link href="/" className="hover:text-slate-900">Home</Link>
+          <span>&gt;</span>
+          <Link href="/search" className="hover:text-slate-900">Pune</Link>
+          <span>&gt;</span>
+          <Link href="/search?location=Hinjawadi" className="hover:text-slate-900">Hinjawadi</Link>
+          <span>&gt;</span>
+          <span className="text-slate-900 font-bold truncate max-w-[150px]">{name}</span>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">{name}</h1>
+        <div className="flex items-center gap-4">
+          <Link href="/search" className="flex items-center gap-1 text-brand-primary hover:text-indigo-800 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to results</span>
+          </Link>
+          <button 
+            onClick={() => alert('Link copied to clipboard!')}
+            className="hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+            title="Share"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+          <button 
+            onClick={() => alert('Property saved to favorites!')}
+            className="hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+            title="Save"
+          >
+            <Heart className="w-3.5 h-3.5 text-slate-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Header split column */}
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
+        
+        {/* Left Side: Title, Rating, Address, Facilities, Badges */}
+        <div className="flex flex-col gap-4 flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{name}</h1>
+            <span className="bg-emerald-100/70 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-emerald-200">
+              Verified
+            </span>
+          </div>
+
+          {/* Ratings & reviews summary */}
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span className="text-amber-600 font-bold">{trustScore.toFixed(1)} ★</span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500">(128 Verified Reviews)</span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500 capitalize">{gender.toLowerCase()} Co-Living</span>
+          </div>
+
+          {/* Location */}
           <p className="text-sm text-slate-500 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
             <span>{address}</span>
           </p>
-        </div>
 
-        {/* Small metadata row */}
-        <div className="flex flex-wrap gap-6 text-xs text-slate-400 mt-2 font-mono">
-          <div className="flex items-center gap-1.5">
-            <Building2 className="w-4 h-4 text-slate-400" />
-            <span>MANAGED BY {ownerName.toUpperCase()}</span>
-          </div>
-          <div>•</div>
-          <div>DEPOSIT: 2 MONTHS RENT</div>
-        </div>
-      </div>
-
-      {/* Right Area: Sticky desktop card showing booking CTA */}
-      <div className="w-full lg:w-96 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium shrink-0">
-        <div className="flex justify-between items-end mb-6">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rent Starts At</span>
-            <p className="text-2xl font-extrabold text-slate-900">
-              ₹{priceFrom.toLocaleString('en-IN')}
-              <span className="text-sm font-semibold text-slate-500 font-mono">/mo</span>
-            </p>
+          {/* Facilities Icons row */}
+          <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-450 uppercase tracking-wide border-t border-slate-100 pt-3">
+            <span className="flex items-center gap-1"><Wifi className="w-4 h-4 text-slate-400" /> Wi-Fi</span>
+            <span className="flex items-center gap-1"><Wind className="w-4 h-4 text-slate-400" /> AC</span>
+            <span className="flex items-center gap-1"><Utensils className="w-4 h-4 text-slate-400" /> Food</span>
+            <span className="flex items-center gap-1"><Shield className="w-4 h-4 text-slate-400" /> CCTV</span>
+            <span className="text-slate-400 font-bold">+5 more</span>
           </div>
 
-          <div className="flex flex-col items-end">
-            <div className="bg-indigo-50 border border-indigo-100 text-brand-primary text-sm font-extrabold px-3 py-1 rounded-xl flex items-center gap-1 shadow-premium-sm">
-              <span>★</span>
-              <span>{trustScore.toFixed(1)}</span>
+          {/* Dynamic occupancy & SLA badges */}
+          <div className="flex flex-wrap gap-2.5 mt-1">
+            <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-indigo-950 font-bold">
+              <span className="w-2 h-2 rounded-full bg-brand-primary" />
+              <span>6 Rooms Available</span>
+              <span className="text-[10px] text-slate-400 font-normal ml-1">(2 Single, 4 Sharing)</span>
             </div>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Trust Score</span>
+            <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-emerald-950 font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+              <span>87% Resolved (24h)</span>
+              <span className="text-[10px] text-slate-400 font-normal ml-1">Fast Complaint Resolution</span>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <button 
-            onClick={() => alert('Booking interface simulated! Moving to check-out flow.')}
-            className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-sm py-4 rounded-xl shadow-premium hover:shadow-premium-lg transition-all duration-200 hover:-translate-y-[1px] flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Schedule Site Visit</span>
-          </button>
-          
-          <button 
-            onClick={() => alert('Rent payment simulated!')}
-            className="w-full bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm py-3.5 rounded-xl shadow-premium-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Pay Booking Deposit</span>
-          </button>
+        {/* Right Side: Simple Price Card & Quick CTA buttons */}
+        <div className="w-full lg:w-96 bg-white border border-slate-205 rounded-2xl p-6 shadow-premium shrink-0">
+          <div className="flex justify-between items-baseline mb-6">
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900">
+                ₹{priceFrom.toLocaleString('en-IN')}
+                <span className="text-xs font-normal text-slate-500 font-mono">/month onwards</span>
+              </p>
+            </div>
+            <button 
+              onClick={() => alert('Price breakdown details!')}
+              className="text-[11px] font-bold text-brand-primary hover:underline cursor-pointer"
+            >
+              Price Details
+            </button>
+          </div>
+
+          {/* Indigo primary buttons and side CTA */}
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => {
+                const element = document.getElementById('rooms')
+                if (element) element.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-sm py-3.5 rounded-xl shadow-premium hover:shadow-premium-lg transition-all duration-200 cursor-pointer text-center"
+            >
+              Book Now
+            </button>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={() => alert(`Contacting PG Manager/Owner ${ownerName}`)}
+                className="flex-1 bg-white border border-brand-primary hover:bg-indigo-50/30 text-brand-primary font-bold text-sm py-3 rounded-xl transition-all cursor-pointer text-center"
+              >
+                Contact Owner
+              </button>
+              <button 
+                onClick={() => alert('Saved!')}
+                className="bg-white border border-slate-200 hover:border-slate-300 p-3 rounded-xl shadow-premium-sm text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                title="Save PG"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <p className="text-[10px] text-slate-400 text-center mt-4 leading-normal">
-          No credit card required. Free site visits are fully covered under the TrustNest SafeStay agreement.
-        </p>
       </div>
-
     </div>
   )
 }
