@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import BlueprintLegend from './BlueprintLegend'
 import Room3DViewerModal from './Room3DViewerModal'
-import { Compass, Sparkles, AlertCircle, ArrowRight, HelpCircle, Check, Eye } from 'lucide-react'
+import { Compass, Eye, ShieldCheck, MapPin } from 'lucide-react'
+import Image from 'next/image'
 
 type Bed = {
   id: string
@@ -174,6 +175,17 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
   // Get active floor details
   const activeFloorName = mockupFloors.find(f => f.id === activeFloorId)?.name || '1st Floor'
 
+  // Room placement coordinates overlay map on the architectural floor plan image:
+  // Keyed by room index (0 to 5) mapping to Room X01 to X06
+  const pinCoordinates = [
+    { top: '35%', left: '17%' }, // Room X01 (Left-top)
+    { top: '35%', left: '26%' }, // Room X02 (Left-inner)
+    { top: '38%', left: '59%' }, // Room X03 (Right-inner)
+    { top: '38%', left: '68%' }, // Room X04 (Right-top)
+    { top: '59%', left: '29%' }, // Room X05 (Left-bottom-inner)
+    { top: '59%', left: '37%' }, // Room X06 (Left-bottom)
+  ]
+
   return (
     <div id="layout" className="bg-white border border-slate-205 p-6 rounded-3xl shadow-premium flex flex-col gap-6 w-full mt-4">
       
@@ -215,7 +227,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
           <BlueprintLegend />
         </div>
 
-        {/* COLUMN 2: 2D Floor Plan Canvas (6 columns) */}
+        {/* COLUMN 2: Architectural Floor Plan Image Canvas with Overlaid Hotspots (6 columns) */}
         <div className="lg:col-span-6 bg-slate-50 border border-slate-205 rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden">
           
           {/* Header Info details */}
@@ -240,7 +252,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                 <span>3D View</span>
               </button>
               <button 
-                onClick={() => alert('LEGEND: Rooms show bed status slots. Tap any node to view room details.')}
+                onClick={() => alert('CLICKS: Tap on any numbered room marker overlaying the blueprint to inspect details.')}
                 className="bg-white border border-slate-200 text-slate-500 hover:text-slate-800 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
               >
                 How to read layout
@@ -248,126 +260,68 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
             </div>
           </div>
 
-          {/* Blueprint Engineering grid wrapper */}
-          <div className="relative overflow-x-auto scrollbar-thin py-6">
-            <div 
-              className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-              style={{ 
-                backgroundImage: 'linear-gradient(#0f172a 1px, transparent 1px), linear-gradient(90deg, #0f172a 1px, transparent 1px)', 
-                backgroundSize: '20px 20px' 
-              }} 
-            />
-
-            {/* Geometric Floor layout container exactly matching Mockup 4 */}
-            <div className="min-w-[550px] border border-slate-350 bg-white p-6 rounded-xl relative flex flex-col gap-6 font-mono text-[10px]">
+          {/* Blueprint Image Container with absolute hotspot overlay */}
+          <div className="relative overflow-x-auto scrollbar-thin py-2">
+            <div className="min-w-[550px] relative aspect-[5/4] w-full rounded-xl overflow-hidden border border-slate-250 bg-white">
               
-              {/* Upper corridor row of rooms */}
-              <div className="grid grid-cols-4 gap-4 items-stretch">
-                {roomsToDisplay.slice(0, 3).map((room) => {
-                  const isSelected = activeRoomId === room.id
-                  const vacantCount = room.beds.filter(b => b.status === 'VACANT').length
-                  return (
-                    <button
-                      key={room.id}
-                      onClick={() => setActiveRoomId(room.id)}
-                      className={`border rounded-lg p-3.5 flex flex-col justify-between min-h-[110px] text-left cursor-pointer transition-all duration-200 ${
-                        isSelected 
-                          ? 'border-brand-primary ring-2 ring-indigo-50/50 bg-indigo-50/10' 
-                          : 'border-slate-300 bg-white hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center w-full">
-                        <span className="font-extrabold text-xs text-slate-800">RM {room.roomNumber}</span>
-                        <span className="text-[8px] text-slate-400 font-bold">{room.capacity} Beds</span>
-                      </div>
+              {/* Actual Architectural Blueprint Referral Image */}
+              <Image
+                src="/blueprint-layout.jpg"
+                alt="Architectural Floor Plan Blueprint"
+                fill
+                priority
+                className="object-contain"
+              />
 
-                      {/* Micro visual Bed icons */}
-                      <div className="flex gap-1.5 mt-3">
+              {/* Overlaid Interactive Room Hotspots */}
+              {roomsToDisplay.slice(0, 6).map((room, idx) => {
+                const coord = pinCoordinates[idx]
+                const isSelected = activeRoomId === room.id
+                
+                // Determine room availability state
+                const vacantBeds = room.beds.filter(b => b.status === 'VACANT').length
+                const totalBeds = room.beds.length
+                const isVacant = vacantBeds > 0
+                const isFull = vacantBeds === 0
+
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => setActiveRoomId(room.id)}
+                    className="absolute z-20 transition-all duration-300 -translate-x-1/2 -translate-y-1/2 cursor-pointer focus:outline-none"
+                    style={{ top: coord.top, left: coord.left }}
+                  >
+                    {/* Hotspot Badge container matching Mockup 4 */}
+                    <div className={`px-2.5 py-1.5 rounded-xl border-2 flex flex-col items-center gap-1 shadow-premium hover:scale-105 transition-transform ${
+                      isSelected 
+                        ? 'border-brand-primary bg-indigo-50/90 text-brand-primary scale-110' 
+                        : 'border-slate-350 bg-white/90 text-slate-800'
+                    }`}>
+                      <span className="text-[9px] font-extrabold font-mono leading-none">
+                        RM {room.roomNumber}
+                      </span>
+                      
+                      {/* Bed availability dot indicators */}
+                      <div className="flex gap-0.5 mt-0.5">
                         {room.beds.map((b) => (
-                          <div 
-                            key={b.id} 
-                            className={`w-4 h-4 rounded border flex items-center justify-center text-[7.5px] font-extrabold ${
-                              b.status === 'VACANT' 
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-600' 
-                                : 'bg-red-50 border-red-300 text-red-650'
+                          <span 
+                            key={b.id}
+                            className={`w-1.5 h-1.5 rounded-full border-[0.5px] border-black/10 ${
+                              b.status === 'VACANT' ? 'bg-emerald-500' : 'bg-red-500'
                             }`}
-                          >
-                            B
-                          </div>
+                          />
                         ))}
                       </div>
-                    </button>
-                  )
-                })}
-
-                {/* Common Area (Lounge) - Styled in Blue */}
-                <div className="border border-blue-200 bg-blue-50/50 p-3.5 rounded-lg flex flex-col justify-between text-blue-700 min-h-[110px]">
-                  <span className="font-extrabold text-[10px] uppercase">Common Area</span>
-                  <span className="text-[8px] font-bold mt-1">(Lounge)</span>
-                </div>
-              </div>
-
-              {/* Central corridor block hallway */}
-              <div className="bg-slate-100 border-y border-slate-200 py-3 text-center text-[8px] font-bold text-slate-450 uppercase tracking-widest leading-none">
-                Central Corridor
-              </div>
-
-              {/* Lower corridor row of rooms + facilities */}
-              <div className="grid grid-cols-4 gap-4 items-stretch">
-                {/* Washing room */}
-                <div className="border border-purple-200 bg-purple-50/50 p-3 rounded-lg flex flex-col justify-between text-purple-700 min-h-[110px]">
-                  <span className="font-bold text-[8px] uppercase">Washing</span>
-                  <span className="text-[8px] font-bold">Machine</span>
-                </div>
-
-                {roomsToDisplay.slice(3, 5).map((room) => {
-                  const isSelected = activeRoomId === room.id
-                  return (
-                    <button
-                      key={room.id}
-                      onClick={() => setActiveRoomId(room.id)}
-                      className={`border rounded-lg p-3.5 flex flex-col justify-between min-h-[110px] text-left cursor-pointer transition-all duration-200 ${
-                        isSelected 
-                          ? 'border-brand-primary ring-2 ring-indigo-50/50 bg-indigo-50/10' 
-                          : 'border-slate-300 bg-white hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center w-full">
-                        <span className="font-extrabold text-xs text-slate-800">RM {room.roomNumber}</span>
-                        <span className="text-[8px] text-slate-400 font-bold">{room.capacity} Beds</span>
-                      </div>
-
-                      {/* Bed Status */}
-                      <div className="flex gap-1.5 mt-3">
-                        {room.beds.map((b) => (
-                          <div 
-                            key={b.id} 
-                            className={`w-4 h-4 rounded border flex items-center justify-center text-[7.5px] font-extrabold ${
-                              b.status === 'VACANT' 
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-600' 
-                                : 'bg-red-50 border-red-300 text-red-650'
-                            }`}
-                          >
-                            B
-                          </div>
-                        ))}
-                      </div>
-                    </button>
-                  )
-                })}
-
-                {/* Canteen & Sink - Styled in yellow/amber */}
-                <div className="border border-amber-200 bg-amber-50/50 p-3.5 rounded-lg flex flex-col justify-between text-amber-700 min-h-[110px]">
-                  <span className="font-extrabold text-[9px] uppercase">Canteen</span>
-                  <span className="text-[8px] font-bold">Kitchen Area</span>
-                </div>
-              </div>
+                    </div>
+                  </button>
+                )
+              })}
 
             </div>
           </div>
 
-          {/* Compass overlay */}
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2 pointer-events-none">
+          {/* Compass direction overlay */}
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 pointer-events-none">
             <Compass className="w-3.5 h-3.5 text-slate-400" />
             <span>North Orientation</span>
           </div>
@@ -406,7 +360,9 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Rent / Bed</span>
-                  <span className="text-slate-900 font-extrabold">₹{calculatePrice(activeRoom.capacity).toLocaleString('en-IN')}/mo</span>
+                  <span className="text-slate-900 font-extrabold">
+                    ₹{calculatePrice(activeRoom.capacity).toLocaleString('en-IN')}/mo
+                  </span>
                 </div>
               </div>
 
@@ -474,35 +430,35 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 text-xs font-semibold text-slate-700">
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">Washing Machine</p>
+            <p className="text-slate-805 font-extrabold">Washing Machine</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">1 Unit</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">RO Drinking Water</p>
+            <p className="text-slate-805 font-extrabold">RO Drinking Water</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">1 Unit</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">Canteen</p>
+            <p className="text-slate-805 font-extrabold">Canteen</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">Available</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">Common Lounge</p>
+            <p className="text-slate-805 font-extrabold">Common Lounge</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">1 Unit</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">High-Speed Wi-Fi</p>
+            <p className="text-slate-805 font-extrabold">High-Speed Wi-Fi</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">Available</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">CCTV Security</p>
+            <p className="text-slate-805 font-extrabold">CCTV Security</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">24x7</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">Lift / Elevator</p>
+            <p className="text-slate-805 font-extrabold">Lift / Elevator</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">1 Unit</span>
           </div>
           <div className="bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-center">
-            <p className="text-slate-800 font-extrabold">Fire Exit</p>
+            <p className="text-slate-805 font-extrabold">Fire Exit</p>
             <span className="text-[9px] text-slate-450 mt-0.5 block">Available</span>
           </div>
         </div>
