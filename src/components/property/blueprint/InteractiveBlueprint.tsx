@@ -251,7 +251,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
             <div className="min-w-[550px] border border-slate-350 bg-white p-6 rounded-xl relative flex flex-col gap-6 font-mono text-[10px]">
               
               {/* Upper corridor row of rooms */}
-              <div className="grid grid-cols-4 gap-3 items-stretch">
+              <div className="grid grid-cols-4 gap-4 items-stretch">
                 {roomsToDisplay.slice(0, 3).map((room) => {
                   const isSelected = activeRoomId === room.id
                   const vacantCount = room.beds.filter(b => b.status === 'VACANT').length
@@ -259,23 +259,23 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                     <button
                       key={room.id}
                       onClick={() => setActiveRoomId(room.id)}
-                      className={`border rounded-lg p-3 flex flex-col justify-between aspect-[4/3] text-left cursor-pointer transition-all duration-200 ${
+                      className={`border rounded-lg p-3.5 flex flex-col justify-between min-h-[110px] text-left cursor-pointer transition-all duration-200 ${
                         isSelected 
                           ? 'border-brand-primary ring-2 ring-indigo-50/50 bg-indigo-50/10' 
                           : 'border-slate-300 bg-white hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-extrabold text-xs">RM {room.roomNumber}</span>
+                        <span className="font-extrabold text-xs text-slate-800">RM {room.roomNumber}</span>
                         <span className="text-[8px] text-slate-400 font-bold">{room.capacity} Beds</span>
                       </div>
 
                       {/* Micro visual Bed icons */}
-                      <div className="flex gap-1 mt-3">
+                      <div className="flex gap-1.5 mt-3">
                         {room.beds.map((b) => (
                           <div 
                             key={b.id} 
-                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[7px] font-extrabold ${
+                            className={`w-4 h-4 rounded border flex items-center justify-center text-[7.5px] font-extrabold ${
                               b.status === 'VACANT' 
                                 ? 'bg-emerald-50 border-emerald-300 text-emerald-600' 
                                 : 'bg-red-50 border-red-300 text-red-650'
@@ -290,21 +290,21 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                 })}
 
                 {/* Common Area (Lounge) - Styled in Blue */}
-                <div className="border border-blue-300 bg-blue-50/50 p-3 rounded-lg flex flex-col justify-between text-blue-700 aspect-[4/3]">
+                <div className="border border-blue-200 bg-blue-50/50 p-3.5 rounded-lg flex flex-col justify-between text-blue-700 min-h-[110px]">
                   <span className="font-extrabold text-[10px] uppercase">Common Area</span>
                   <span className="text-[8px] font-bold mt-1">(Lounge)</span>
                 </div>
               </div>
 
               {/* Central corridor block hallway */}
-              <div className="bg-slate-100 border-y border-slate-300 py-2.5 text-center text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+              <div className="bg-slate-100 border-y border-slate-200 py-3 text-center text-[8px] font-bold text-slate-450 uppercase tracking-widest leading-none">
                 Central Corridor
               </div>
 
               {/* Lower corridor row of rooms + facilities */}
-              <div className="grid grid-cols-4 gap-3 items-stretch">
+              <div className="grid grid-cols-4 gap-4 items-stretch">
                 {/* Washing room */}
-                <div className="border border-purple-200 bg-purple-50/50 p-2.5 rounded-lg flex flex-col justify-between text-purple-700 aspect-[4/3]">
+                <div className="border border-purple-200 bg-purple-50/50 p-3 rounded-lg flex flex-col justify-between text-purple-700 min-h-[110px]">
                   <span className="font-bold text-[8px] uppercase">Washing</span>
                   <span className="text-[8px] font-bold">Machine</span>
                 </div>
@@ -315,23 +315,23 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                     <button
                       key={room.id}
                       onClick={() => setActiveRoomId(room.id)}
-                      className={`border rounded-lg p-3 flex flex-col justify-between aspect-[4/3] text-left cursor-pointer transition-all duration-200 ${
+                      className={`border rounded-lg p-3.5 flex flex-col justify-between min-h-[110px] text-left cursor-pointer transition-all duration-200 ${
                         isSelected 
                           ? 'border-brand-primary ring-2 ring-indigo-50/50 bg-indigo-50/10' 
                           : 'border-slate-300 bg-white hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-extrabold text-xs">RM {room.roomNumber}</span>
+                        <span className="font-extrabold text-xs text-slate-800">RM {room.roomNumber}</span>
                         <span className="text-[8px] text-slate-400 font-bold">{room.capacity} Beds</span>
                       </div>
 
                       {/* Bed Status */}
-                      <div className="flex gap-1 mt-3">
+                      <div className="flex gap-1.5 mt-3">
                         {room.beds.map((b) => (
                           <div 
                             key={b.id} 
-                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[7px] font-extrabold ${
+                            className={`w-4 h-4 rounded border flex items-center justify-center text-[7.5px] font-extrabold ${
                               b.status === 'VACANT' 
                                 ? 'bg-emerald-50 border-emerald-300 text-emerald-600' 
                                 : 'bg-red-50 border-red-300 text-red-650'
@@ -346,7 +346,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                 })}
 
                 {/* Canteen & Sink - Styled in yellow/amber */}
-                <div className="border border-amber-300 bg-amber-50/50 p-3 rounded-lg flex flex-col justify-between text-amber-700 aspect-[4/3]">
+                <div className="border border-amber-200 bg-amber-50/50 p-3.5 rounded-lg flex flex-col justify-between text-amber-700 min-h-[110px]">
                   <span className="font-extrabold text-[9px] uppercase">Canteen</span>
                   <span className="text-[8px] font-bold">Kitchen Area</span>
                 </div>
