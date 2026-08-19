@@ -27,10 +27,10 @@ export default function Footer() {
           <div className="flex flex-col gap-3 text-xs font-semibold uppercase tracking-wider">
             <span className="text-slate-200">Discover Stays</span>
             <div className="flex flex-col gap-2 lowercase font-normal normal-case text-slate-400">
-              <Link href="/discover?location=Hinjawadi" className="hover:text-white transition-colors">Hinjawadi IT Park PGs</Link>
-              <Link href="/discover?location=Wakad" className="hover:text-white transition-colors">Wakad Stays</Link>
-              <Link href="/discover?location=Baner" className="hover:text-white transition-colors">Baner Crest PGs</Link>
-              <Link href="/discover?location=Kharadi" className="hover:text-white transition-colors">Kharadi Nest Stays</Link>
+              <Link href="/search?location=Hinjawadi" className="hover:text-white transition-colors">Hinjawadi IT Park PGs</Link>
+              <Link href="/search?location=Wakad" className="hover:text-white transition-colors">Wakad Stays</Link>
+              <Link href="/search?location=Baner" className="hover:text-white transition-colors">Baner Crest PGs</Link>
+              <Link href="/search?location=Kharadi" className="hover:text-white transition-colors">Kharadi Nest Stays</Link>
             </div>
           </div>
 

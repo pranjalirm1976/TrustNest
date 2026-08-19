@@ -41,7 +41,7 @@ export default function FeaturedProperties({ properties }: FeaturedPropertiesPro
           </div>
           
           <Link 
-            href="/discover"
+            href="/search"
             className="group inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold py-3 px-5 rounded-xl shadow-premium transition-all duration-200 hover:-translate-y-[1px] cursor-pointer"
           >
             <span>Explore All Properties</span>

@@ -47,7 +47,7 @@ export default function PopularAreas() {
           </div>
           
           <Link 
-            href="/discover"
+            href="/search"
             className="group flex items-center gap-1 text-sm font-bold text-brand-primary hover:text-brand-primary-dark transition-colors border-b border-transparent hover:border-brand-primary pb-1"
           >
             <span>View All Pune PGs</span>
@@ -59,7 +59,7 @@ export default function PopularAreas() {
           {areas.map((area, idx) => (
             <Link
               key={idx}
-              href={`/discover?location=${area.name}`}
+              href={`/search?location=${area.name}`}
               className="group relative h-[380px] rounded-2xl overflow-hidden shadow-premium hover:shadow-premium-lg flex flex-col justify-end p-6 border border-slate-200/40 cursor-pointer"
             >
               {/* background image */}
