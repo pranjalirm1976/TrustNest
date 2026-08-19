@@ -146,51 +146,60 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Rooms Section */}
-            <div id="rooms" className="py-12 border-b border-slate-100 flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Room Inventory & Layouts</h2>
-                <p className="text-sm text-slate-500">Explore interactive 2D blueprint layouts and 3D room visualizers.</p>
-              </div>
-              <InteractiveBlueprint floors={property.floors} priceFrom={property.priceFrom} />
-              <RoomAvailability rooms={allRooms} priceFrom={property.priceFrom} />
-            </div>
-
-            {/* Food Section */}
-            <FoodTransparency foodMenus={property.foodMenus} />
-
-            {/* Performance Section */}
-            <PerformanceMetrics complaints={property.complaints} trustScore={property.trustScore} />
-            <div className="mt-6">
-              <TrustScoreBreakdown stats={trustStats} />
-            </div>
-
-            {/* Reviews Section */}
-            <ReviewSection reviews={property.reviews} />
-
-            {/* Nearby Section */}
-            <NearbyServicesSection services={property.services} />
-
           </div>
 
-          {/* Right Column: Check Availability, Talk to Owner and Safety details (4 columns) */}
+          {/* Right Column: Check Availability and Talk to Owner (4 columns) */}
           <div className="hidden lg:col-span-4 lg:flex flex-col gap-6">
             {/* Check Availability */}
             <CheckAvailabilityCard />
 
             {/* Talk to Owner */}
             <TalkToOwnerCard ownerName={property.owner.name} />
-
-            {/* Safety badge */}
-            <div className="bg-slate-50 border border-slate-200/60 p-6 rounded-2xl flex flex-col gap-4">
-              <ShieldCheck className="w-8 h-8 text-brand-success" />
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">TrustNest SafeStay Guarantee</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                If the property fails to match the online floor layout or the daily food menu deviates consistently from audits, you are entitled to a full deposit refund under the TrustNest terms of service.
-              </p>
-            </div>
           </div>
 
+        </div>
+
+        {/* Rooms Layout Section - FULL WIDTH (12 Columns equivalent) */}
+        <div id="rooms" className="py-12 border-b border-slate-100 flex flex-col gap-6 w-full">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Room Inventory & Layouts</h2>
+            <p className="text-sm text-slate-500">Explore interactive 2D blueprint layouts and 3D room visualizers.</p>
+          </div>
+          <InteractiveBlueprint floors={property.floors} priceFrom={property.priceFrom} />
+        </div>
+
+        {/* TrustNest SafeStay Guarantee Banner - FULL WIDTH BELOW LAYOUT */}
+        <div className="bg-slate-50 border border-slate-200/60 p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full my-4 shadow-premium-sm">
+          <ShieldCheck className="w-10 h-10 text-brand-success shrink-0" />
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">TrustNest SafeStay Guarantee</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mt-1">
+              If the property fails to match the online floor layout or the daily food menu deviates consistently from audits, you are entitled to a full deposit refund under the TrustNest terms of service.
+            </p>
+          </div>
+        </div>
+
+        {/* Room Availability List & Details - FULL WIDTH */}
+        <div className="py-8 border-b border-slate-100 w-full">
+          <RoomAvailability rooms={allRooms} priceFrom={property.priceFrom} />
+        </div>
+
+        {/* Food, Performance, Reviews, and Nearby sections - FULL WIDTH */}
+        <div className="w-full flex flex-col gap-4">
+          {/* Food Section */}
+          <FoodTransparency foodMenus={property.foodMenus} />
+
+          {/* Performance Section */}
+          <PerformanceMetrics complaints={property.complaints} trustScore={property.trustScore} />
+          <div className="mt-6">
+            <TrustScoreBreakdown stats={trustStats} />
+          </div>
+
+          {/* Reviews Section */}
+          <ReviewSection reviews={property.reviews} />
+
+          {/* Nearby Section */}
+          <NearbyServicesSection services={property.services} />
         </div>
 
         {/* 6 Summary Metrics Cards exactly matching Mockup 2 */}

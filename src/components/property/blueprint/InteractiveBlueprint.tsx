@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import BlueprintLegend from './BlueprintLegend'
 import Room3DViewerModal from './Room3DViewerModal'
 import { Compass, Sparkles, AlertCircle, ArrowRight, HelpCircle, Check, Eye } from 'lucide-react'
@@ -46,16 +46,113 @@ interface InteractiveBlueprintProps {
 export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveBlueprintProps) {
   // Setup standard list of mockup floors for display matching Mockup 4
   const mockupFloors = [
-    { id: 'terrace', name: 'Terrace Floor', level: 4 },
+    { id: 'terrace', name: 'Terrace Floor', level: 5 },
     { id: 'floor3', name: '3rd Floor', level: 3 },
     { id: 'floor2', name: '2nd Floor', level: 2 },
-    { id: floors[0]?.id || 'floor1', name: '1st Floor', level: 1 },
-    { id: 'ground', name: 'Ground Floor', level: 0 },
+    { id: floors.find(f => f.level === 1)?.id || 'floor1', name: '1st Floor', level: 1 },
+    { id: floors.find(f => f.level === 0)?.id || 'ground', name: 'Ground Floor', level: 0 },
     { id: 'basement', name: 'Basement', level: -1 },
   ]
 
-  const [activeFloorId, setActiveFloorId] = useState<string>(floors[0]?.id || 'floor1')
-  
+  const [activeFloorId, setActiveFloorId] = useState<string>(
+    floors.find(f => f.level === 1)?.id || 'floor1'
+  )
+
+  // Find current floor level
+  const activeFloor = mockupFloors.find(f => f.id === activeFloorId) || mockupFloors.find(f => f.level === 1)
+  const activeLevel = activeFloor ? activeFloor.level : 1
+  const floorPrefix = activeLevel === 0 ? 'G' : activeLevel === 5 ? 'T' : activeLevel === -1 ? 'B' : `${activeLevel}`
+
+  // Find DB rooms for this floor
+  const dbFloor = floors.find(f => f.level === activeLevel)
+  const currentFloorRooms = dbFloor?.rooms || []
+
+  // If the floor has no rooms seeded, generate them dynamically to show the correct layout prefix
+  const roomsToDisplay = currentFloorRooms.length >= 4 
+    ? currentFloorRooms 
+    : [
+        {
+          id: `rm-${floorPrefix}01`,
+          roomNumber: `${floorPrefix}01`,
+          capacity: 3,
+          hasWashroom: true,
+          beds: [
+            { id: 'b1', identifier: 'A', status: 'VACANT' },
+            { id: 'b2', identifier: 'B', status: 'VACANT' },
+            { id: 'b3', identifier: 'C', status: 'OCCUPIED' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+        },
+        {
+          id: `rm-${floorPrefix}02`,
+          roomNumber: `${floorPrefix}02`,
+          capacity: 2,
+          hasWashroom: true,
+          beds: [
+            { id: 'b4', identifier: 'A', status: 'OCCUPIED' },
+            { id: 'b5', identifier: 'B', status: 'OCCUPIED' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }]
+        },
+        {
+          id: `rm-${floorPrefix}03`,
+          roomNumber: `${floorPrefix}03`,
+          capacity: 2,
+          hasWashroom: true,
+          beds: [
+            { id: 'b6', identifier: 'A', status: 'VACANT' },
+            { id: 'b7', identifier: 'B', status: 'VACANT' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }]
+        },
+        {
+          id: `rm-${floorPrefix}04`,
+          roomNumber: `${floorPrefix}04`,
+          capacity: 3,
+          hasWashroom: true,
+          beds: [
+            { id: 'b8', identifier: 'A', status: 'VACANT' },
+            { id: 'b9', identifier: 'B', status: 'VACANT' },
+            { id: 'b10', identifier: 'C', status: 'VACANT' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+        },
+        {
+          id: `rm-${floorPrefix}05`,
+          roomNumber: `${floorPrefix}05`,
+          capacity: 2,
+          hasWashroom: true,
+          beds: [
+            { id: 'b11', identifier: 'A', status: 'VACANT' },
+            { id: 'b12', identifier: 'B', status: 'OCCUPIED' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }]
+        },
+        {
+          id: `rm-${floorPrefix}06`,
+          roomNumber: `${floorPrefix}06`,
+          capacity: 4,
+          hasWashroom: true,
+          beds: [
+            { id: 'b13', identifier: 'A', status: 'VACANT' },
+            { id: 'b14', identifier: 'B', status: 'VACANT' },
+            { id: 'b15', identifier: 'C', status: 'OCCUPIED' },
+            { id: 'b16', identifier: 'D', status: 'OCCUPIED' },
+          ],
+          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+        }
+      ]
+
+  const [activeRoomId, setActiveRoomId] = useState<string>('')
+  const [show3DModal, setShow3DModal] = useState(false)
+
+  // Automatically select the first room whenever roomsToDisplay changes
+  useEffect(() => {
+    if (roomsToDisplay.length > 0) {
+      setActiveRoomId(roomsToDisplay[0].id)
+    }
+  }, [activeFloorId, roomsToDisplay.length])
+
   // Helper to determine sharing format name
   const getSharingType = (capacity: number) => {
     if (capacity === 0) return 'Common Area'
@@ -64,90 +161,8 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
     if (capacity === 3) return 'Triple Sharing'
     return `${capacity} Sharing`
   }
-  
-  // Find current floor rooms. If floor is a mock floor, use properties floor rooms as fallback
-  const dbFloor = floors.find(f => f.id === activeFloorId) || floors[0]
-  const currentFloorRooms = dbFloor?.rooms || []
 
-  // Ensure we have rooms 101 to 106 styled for layout representation
-  const defaultRooms: Room[] = [
-    {
-      id: 'rm-101',
-      roomNumber: '101',
-      capacity: 3,
-      hasWashroom: true,
-      beds: [
-        { id: 'b1', identifier: 'A', status: 'VACANT' },
-        { id: 'b2', identifier: 'B', status: 'VACANT' },
-        { id: 'b3', identifier: 'C', status: 'OCCUPIED' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
-    },
-    {
-      id: 'rm-102',
-      roomNumber: '102',
-      capacity: 2,
-      hasWashroom: true,
-      beds: [
-        { id: 'b4', identifier: 'A', status: 'OCCUPIED' },
-        { id: 'b5', identifier: 'B', status: 'OCCUPIED' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }]
-    },
-    {
-      id: 'rm-103',
-      roomNumber: '103',
-      capacity: 2,
-      hasWashroom: true,
-      beds: [
-        { id: 'b6', identifier: 'A', status: 'VACANT' },
-        { id: 'b7', identifier: 'B', status: 'VACANT' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }]
-    },
-    {
-      id: 'rm-104',
-      roomNumber: '104',
-      capacity: 3,
-      hasWashroom: true,
-      beds: [
-        { id: 'b8', identifier: 'A', status: 'VACANT' },
-        { id: 'b9', identifier: 'B', status: 'VACANT' },
-        { id: 'b10', identifier: 'C', status: 'VACANT' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
-    },
-    {
-      id: 'rm-105',
-      roomNumber: '105',
-      capacity: 2,
-      hasWashroom: true,
-      beds: [
-        { id: 'b11', identifier: 'A', status: 'VACANT' },
-        { id: 'b12', identifier: 'B', status: 'OCCUPIED' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }]
-    },
-    {
-      id: 'rm-106',
-      roomNumber: '106',
-      capacity: 4,
-      hasWashroom: true,
-      beds: [
-        { id: 'b13', identifier: 'A', status: 'VACANT' },
-        { id: 'b14', identifier: 'B', status: 'VACANT' },
-        { id: 'b15', identifier: 'C', status: 'OCCUPIED' },
-        { id: 'b16', identifier: 'D', status: 'OCCUPIED' },
-      ],
-      amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
-    }
-  ]
-
-  const roomsToDisplay = currentFloorRooms.length >= 4 ? currentFloorRooms : defaultRooms
-  const [activeRoomId, setActiveRoomId] = useState<string>(roomsToDisplay[0]?.id || 'rm-101')
-  
   const activeRoom = roomsToDisplay.find(r => r.id === activeRoomId) || roomsToDisplay[0]
-  const [show3DModal, setShow3DModal] = useState(false)
 
   // Calculate pricing based on capacity
   const calculatePrice = (capacity: number) => {
@@ -183,11 +198,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
               {mockupFloors.map((floor) => (
                 <button
                   key={floor.id}
-                  onClick={() => {
-                    setActiveFloorId(floor.id)
-                    // Reset active room context if switching floors
-                    setActiveRoomId(roomsToDisplay[0]?.id || 'rm-101')
-                  }}
+                  onClick={() => setActiveFloorId(floor.id)}
                   className={`text-xs font-bold text-left px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
                     activeFloorId === floor.id
                       ? 'bg-brand-primary text-white shadow-premium'
