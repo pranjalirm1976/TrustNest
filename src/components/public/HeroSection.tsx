@@ -79,79 +79,39 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right Column: Interactive Map Grid Mockup */}
+          {/* Right Column: Google Map with details popover */}
           <div className="lg:col-span-6 relative flex justify-center items-center">
-            <div className="w-full aspect-[16/10] bg-slate-100 border border-slate-200 rounded-3xl overflow-hidden shadow-premium relative min-h-[350px]">
+            <div className="w-full aspect-[16/10] bg-slate-100 border border-slate-205 rounded-3xl overflow-hidden shadow-premium relative min-h-[350px]">
               
-              {/* Styled Blueprint / Road Grid Mockup */}
-              <div className="absolute inset-0 bg-[#eef2f6] opacity-90 select-none">
-                {/* Subtle grid pattern representing streets */}
-                <div 
-                  className="absolute inset-0 opacity-[0.04] pointer-events-none" 
-                  style={{ 
-                    backgroundImage: 'linear-gradient(#0f172a 1px, transparent 1px), linear-gradient(90deg, #0f172a 1px, transparent 1px)', 
-                    backgroundSize: '20px 20px' 
-                  }} 
-                />
+              {/* Google Maps Iframe */}
+              <iframe
+                src="https://maps.google.com/maps?q=Hinjawadi,Pune,Maharashtra&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                className="w-full h-full border-0 absolute inset-0"
+                allowFullScreen
+                loading="lazy"
+                title="Pune PG Map Locations"
+              />
 
-                {/* Abstract Roads drawing */}
-                <svg className="absolute inset-0 w-full h-full text-white" pointerEvents="none">
-                  <line x1="0" y1="20%" x2="100%" y2="40%" stroke="currentColor" strokeWidth="8" />
-                  <line x1="20%" y1="0" x2="30%" y2="100%" stroke="currentColor" strokeWidth="6" />
-                  <line x1="60%" y1="0" x2="70%" y2="100%" stroke="currentColor" strokeWidth="10" />
-                  <line x1="0" y1="65%" x2="100%" y2="60%" stroke="currentColor" strokeWidth="8" />
-                  {/* Mula-Mutha River representation */}
-                  <path d="M 0,50 Q 40,40 60,60 T 100,45" fill="none" stroke="#dbeafe" strokeWidth="20" />
-                </svg>
-
-                {/* Landmark tags */}
-                <span className="absolute top-[25%] left-[8%] text-[8px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Hinjawadi Phase 1</span>
-                <span className="absolute bottom-[20%] left-[25%] text-[8px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Wakad chowk</span>
-                <span className="absolute top-[45%] right-[20%] text-[8px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">Baner road</span>
-
-                {/* Markers */}
-                <div className="absolute top-[35%] left-[20%] w-3 h-3 bg-brand-primary/30 rounded-full border border-brand-primary flex items-center justify-center animate-ping" />
-                <div className="absolute top-[35%] left-[20%] w-2 h-2 bg-brand-primary rounded-full" />
-
-                <div className="absolute top-[50%] left-[50%] w-3.5 h-3.5 bg-brand-primary/30 rounded-full border border-brand-primary flex items-center justify-center animate-ping" />
-                <div className="absolute top-[50%] left-[50%] w-2.5 h-2.5 bg-brand-primary rounded-full" />
-
-                <div className="absolute top-[68%] left-[78%] w-3 h-3 bg-brand-primary/30 rounded-full border border-brand-primary flex items-center justify-center animate-ping" />
-                <div className="absolute top-[68%] left-[78%] w-2 h-2 bg-brand-primary rounded-full" />
-
-                {/* Main highlighted Pin */}
-                <div className="absolute top-[40%] right-[32%] z-20 flex flex-col items-center">
-                  <div className="bg-brand-primary text-white p-2 rounded-full shadow-premium-lg scale-110">
-                    <PinIcon className="w-5 h-5 fill-white text-brand-primary" />
-                  </div>
-                  
-                  {/* Map Hover Info Popover exactly matching Mockup 1 */}
-                  <div className="absolute bottom-10 -left-20 w-56 bg-white border border-slate-200 p-2.5 rounded-2xl shadow-premium-lg flex items-center gap-3 animate-in z-30">
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-100">
-                      <Image
-                        src="https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=200&q=80"
-                        alt="Bliss Living PG"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-[11px] font-extrabold text-slate-900 truncate">Bliss Living PG</h4>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[9px] font-extrabold text-amber-600">4.6 ★</span>
-                        <span className="text-[8px] text-slate-400 font-bold">(128)</span>
-                      </div>
-                      <p className="text-[10px] font-extrabold text-slate-900 mt-1">₹8,500<span className="text-[8px] text-slate-450 font-normal">/month</span></p>
-                    </div>
-                  </div>
+              {/* Map Hover Info Popover exactly matching Mockup 1 */}
+              <div className="absolute bottom-6 right-6 w-56 bg-white/95 backdrop-blur-sm border border-slate-200 p-2.5 rounded-2xl shadow-premium-lg flex items-center gap-3 animate-in z-30">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-100">
+                  <Image
+                    src="https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=200&q=80"
+                    alt="Bliss Living PG"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-
-                {/* Additional markers */}
-                <div className="absolute top-[18%] right-[15%] w-2 h-2 bg-brand-primary rounded-full" />
-                <div className="absolute bottom-[28%] right-[10%] w-2.5 h-2.5 bg-brand-primary rounded-full" />
-
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-[11px] font-extrabold text-slate-905 truncate">Bliss Living PG</h4>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] font-bold text-amber-600">4.6 ★</span>
+                    <span className="text-[8px] text-slate-400 font-bold">(128)</span>
+                  </div>
+                  <p className="text-[10px] font-extrabold text-slate-900 mt-1">₹8,500<span className="text-[8px] text-slate-450 font-normal">/month</span></p>
+                </div>
               </div>
-              
+
             </div>
           </div>
 
