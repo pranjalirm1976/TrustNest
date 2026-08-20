@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, ShieldCheck, Box, Compass, RefreshCw, Heart, Info, Check, MapPin, Eye } from 'lucide-react'
 import Image from 'next/image'
 
@@ -31,6 +31,59 @@ export default function Room3DViewerModal({
 }: Room3DViewerModalProps) {
   const [activeThumb, setActiveThumb] = useState(0)
 
+  // 3D rotation state variables
+  const [rotateX, setRotateX] = useState(55)
+  const [rotateY, setRotateY] = useState(45)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [autoRotate, setAutoRotate] = useState(true)
+
+  // Auto rotation effect
+  useEffect(() => {
+    if (!autoRotate || isDragging) return
+    const interval = setInterval(() => {
+      setRotateY(prev => (prev + 0.5) % 360)
+    }, 16)
+    return () => clearInterval(interval)
+  }, [autoRotate, isDragging])
+
+  // Mouse Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setAutoRotate(false)
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    const deltaX = e.clientX - dragStart.x
+    const deltaY = e.clientY - dragStart.y
+    setRotateY(prev => prev + deltaX * 0.5)
+    setRotateX(prev => Math.max(30, Math.min(75, prev - deltaY * 0.5)))
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false)
+  }
+
+  // Touch Drag handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) return
+    setIsDragging(true)
+    setAutoRotate(false)
+    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length === 0) return
+    const deltaX = e.touches[0].clientX - dragStart.x
+    const deltaY = e.touches[0].clientY - dragStart.y
+    setRotateY(prev => prev + deltaX * 0.5)
+    setRotateX(prev => Math.max(30, Math.min(75, prev - deltaY * 0.5)))
+    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+  }
+
   // Sharing format
   const getSharingType = (capacity: number) => {
     if (capacity === 0) return 'Common Area'
@@ -56,6 +109,82 @@ export default function Room3DViewerModal({
     'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80',
   ]
+
+  // CSS 3D Room Rendering Helpers
+  const render3DBed = (x: string, y: string, index: number) => {
+    const bedItem = room.beds[index]
+    const isOccupied = bedItem ? bedItem.status === 'OCCUPIED' : false
+    const colorClass = isOccupied ? 'bg-red-500 border-red-650' : 'bg-emerald-500 border-emerald-650'
+    return (
+      <div 
+        key={`bed-${index}`}
+        className="absolute w-10 h-16 transition-all duration-300"
+        style={{ 
+          left: x, 
+          top: y, 
+          transformStyle: 'preserve-3d', 
+          transform: 'translateZ(1px)' 
+        }}
+      >
+        {/* Bed Wood Frame Base Box */}
+        <div className="absolute inset-0 bg-amber-800 rounded border border-amber-900" style={{ transform: 'translateZ(2px)' }} />
+        {/* Mattress Box */}
+        <div className="absolute left-[2px] right-[2px] top-[2px] bottom-[2px] bg-slate-50 border border-slate-200 rounded" style={{ transform: 'translateZ(5px)' }} />
+        {/* Blanket/Bedsheet Box */}
+        <div className={`absolute left-[2px] right-[2px] top-[10px] bottom-[2px] rounded-b ${colorClass} border-t border-white/20`} style={{ transform: 'translateZ(6px)' }} />
+        {/* Pillow Box */}
+        <div className="absolute left-[6px] right-[6px] top-[3px] h-2.5 bg-indigo-200 border border-indigo-300 rounded-sm" style={{ transform: 'translateZ(7px)' }} />
+        {/* Label */}
+        <div className="absolute left-0 right-0 -bottom-3 text-[6.5px] font-extrabold text-slate-400 text-center uppercase tracking-wide" style={{ transform: 'translateZ(9px) rotateX(-90deg)' }}>
+          Bed {bedItem ? bedItem.identifier : String.fromCharCode(65 + index)}
+        </div>
+      </div>
+    )
+  }
+
+  const render3DWardrobe = (x: string, y: string) => {
+    return (
+      <div 
+        className="absolute w-8 h-8 transition-all duration-300"
+        style={{ 
+          left: x, 
+          top: y, 
+          transformStyle: 'preserve-3d', 
+          transform: 'translateZ(1px)' 
+        }}
+      >
+        {/* Cabinet base face */}
+        <div className="absolute inset-0 bg-amber-900 border border-amber-950 rounded shadow-lg" style={{ transform: 'translateZ(20px)' }} />
+        {/* Front vertical face */}
+        <div className="absolute left-0 bottom-0 w-8 h-[20px] bg-amber-800 border-r border-amber-950 origin-bottom transform rotate-x-90" />
+        {/* Side vertical face */}
+        <div className="absolute right-0 top-0 w-[20px] h-8 bg-amber-950 origin-right transform rotate-y-90" />
+      </div>
+    )
+  }
+
+  const render3DStudyDesk = (x: string, y: string, index: number) => {
+    return (
+      <div 
+        key={`desk-${index}`}
+        className="absolute w-8 h-6 transition-all duration-300"
+        style={{ 
+          left: x, 
+          top: y, 
+          transformStyle: 'preserve-3d', 
+          transform: 'translateZ(1px)' 
+        }}
+      >
+        {/* Table Top Surface */}
+        <div className="absolute inset-0 bg-orange-700 border border-orange-850 rounded" style={{ transform: 'translateZ(8px)' }} />
+        {/* Table Legs */}
+        <div className="absolute left-0.5 top-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute right-0.5 top-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute left-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute right-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -143,59 +272,151 @@ export default function Room3DViewerModal({
               </div>
             </div>
 
-            {/* 2. 3D Room Viewer Canvas (5 columns) */}
-            <div className="lg:col-span-5 bg-slate-950 p-5 rounded-2xl flex flex-col justify-between relative select-none overflow-hidden min-h-[250px]">
+            {/* 2. Interactive 3D Room Viewer Canvas (5 columns) */}
+            <div 
+              className="lg:col-span-5 bg-slate-950 p-5 rounded-2xl flex flex-col justify-between relative select-none overflow-hidden min-h-[350px]"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUpOrLeave}
+            >
               <div className="flex justify-between items-center z-10">
                 <div className="bg-white/10 backdrop-blur border border-white/10 px-2.5 py-1 rounded-lg text-white flex items-center gap-1.5">
                   <Box className="w-3.5 h-3.5 text-brand-primary animate-pulse" />
-                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono">3D Room View</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Interactive 3D Room View</span>
                 </div>
                 
-                <button 
-                  onClick={() => alert('Recentering 3D model camera...')}
-                  className="bg-white/10 hover:bg-white/20 border border-white/10 p-1.5 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Reset View"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAutoRotate(!autoRotate)
+                    }}
+                    className={`border px-2 py-1 rounded-lg text-[9px] font-bold transition-all cursor-pointer ${
+                      autoRotate 
+                        ? 'bg-brand-primary/20 border-brand-primary text-brand-primary' 
+                        : 'bg-white/10 border-white/10 text-slate-350 hover:text-white'
+                    }`}
+                    title="Toggle Auto Rotation"
+                  >
+                    Auto Spin
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setRotateX(55)
+                      setRotateY(45)
+                      setAutoRotate(false)
+                    }}
+                    className="bg-white/10 hover:bg-white/20 border border-white/10 p-1.5 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    title="Reset View Angle"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              {/* CSS 3D Room isometric visualizer mockup */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                <div className="relative w-40 h-40 flex items-center justify-center">
-                  <div className="absolute inset-0 border border-dashed border-white/10 rounded-full animate-spin-slow" />
-                  
-                  {/* Detailed 3D Room Cut-out mockup */}
+              {/* Interactive 3D Room viewport */}
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div 
+                  className="relative w-72 h-56 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                  style={{ perspective: '800px' }}
+                >
+                  {/* Outer rotation container wrapper */}
                   <div 
-                    className="w-28 h-20 relative"
-                    style={{ transform: 'rotateX(55deg) rotateZ(45deg)', transformStyle: 'preserve-3d' }}
+                    className="w-64 h-48 relative transition-transform duration-75 ease-out"
+                    style={{ 
+                      transform: `rotateX(${rotateX}deg) rotateY(0deg) rotateZ(${rotateY}deg)`, 
+                      transformStyle: 'preserve-3d' 
+                    }}
                   >
-                    {/* Floor */}
-                    <div className="absolute inset-0 bg-[#312e81] border border-white/20" />
-                    {/* Back Wall */}
-                    <div className="absolute left-0 top-0 h-10 w-28 bg-[#1e1b4b] origin-top transform -rotate-x-90 border-r border-white/10" />
-                    {/* Left Wall */}
-                    <div className="absolute left-0 top-0 h-20 w-10 bg-[#1e1b4b] origin-left transform -rotate-y-90 border-b border-white/10" />
-                    {/* Double beds representation */}
-                    <div className="absolute bottom-2 left-2 w-10 h-7 bg-emerald-500/80 border border-white/30 transform translate-z-2" />
-                    <div className="absolute top-2 right-2 w-10 h-7 bg-emerald-500/80 border border-white/30 transform translate-z-2" />
-                    {/* Wardrobe */}
-                    <div className="absolute bottom-2 right-2 w-5 h-8 bg-amber-600/80 border border-white/30 transform translate-z-6" />
+                    {/* Floor (Wood texture panel effect) */}
+                    <div 
+                      className="absolute inset-0 bg-[#e7e5e4] border-2 border-slate-700/60 rounded"
+                      style={{ 
+                        backgroundImage: 'repeating-linear-gradient(90deg, #d6d3d1 0px, #d6d3d1 8px, #e7e5e4 8px, #e7e5e4 16px)',
+                        transform: 'translateZ(0px)'
+                      }}
+                    />
+                    
+                    {/* Back Wall (North) */}
+                    <div 
+                      className="absolute left-0 top-0 h-16 w-64 bg-stone-300/90 border-r border-stone-400 origin-top transform -rotate-x-90 flex items-center justify-center"
+                      style={{ transformStyle: 'preserve-3d', transform: 'rotateX(-90deg) translateZ(0px)' }}
+                    >
+                      {/* Window details */}
+                      <div className="w-24 h-8 bg-sky-100/60 border border-sky-350 rounded flex items-center justify-center text-[7px] font-bold text-sky-800 shadow-inner">
+                        Window View
+                      </div>
+                    </div>
+
+                    {/* Left Wall (West) */}
+                    <div 
+                      className="absolute left-0 top-0 h-48 w-16 bg-stone-200/90 border-b border-stone-350 origin-left transform -rotate-y-90 flex items-center justify-center"
+                      style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-90deg) translateZ(0px)' }}
+                    >
+                      {/* Door details */}
+                      <div className="w-8 h-12 bg-amber-800 border border-amber-950 rounded-t shadow-md absolute bottom-0 left-6" />
+                    </div>
+
+                    {/* Render dynamic furniture objects matching active room configuration */}
+                    {room.capacity === 1 && (
+                      <>
+                        {render3DBed('90px', '45px', 0)}
+                        {render3DStudyDesk('150px', '55px', 0)}
+                        {render3DWardrobe('90px', '125px')}
+                      </>
+                    )}
+
+                    {room.capacity === 2 && (
+                      <>
+                        {render3DBed('35px', '20px', 0)}
+                        {render3DBed('35px', '100px', 1)}
+                        {render3DStudyDesk('110px', '25px', 0)}
+                        {render3DStudyDesk('110px', '105px', 1)}
+                        {render3DWardrobe('185px', '60px')}
+                      </>
+                    )}
+
+                    {room.capacity === 3 && (
+                      <>
+                        {render3DBed('30px', '10px', 0)}
+                        {render3DBed('30px', '65px', 1)}
+                        {render3DBed('30px', '120px', 2)}
+                        {render3DStudyDesk('105px', '15px', 0)}
+                        {render3DStudyDesk('105px', '70px', 1)}
+                        {render3DStudyDesk('105px', '125px', 2)}
+                        {render3DWardrobe('185px', '65px')}
+                      </>
+                    )}
+
+                    {room.capacity >= 4 && (
+                      <>
+                        {render3DBed('30px', '15px', 0)}
+                        {render3DBed('30px', '105px', 1)}
+                        {render3DBed('160px', '15px', 2)}
+                        {render3DBed('160px', '105px', 3)}
+                        {render3DStudyDesk('90px', '20px', 0)}
+                        {render3DStudyDesk('90px', '110px', 1)}
+                        {render3DWardrobe('110px', '65px')}
+                      </>
+                    )}
+
                   </div>
                 </div>
-                
-                <button 
-                  onClick={() => alert('Entering fullscreen 3D model...')}
-                  className="bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-[9px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer mt-4 flex items-center gap-1"
-                >
-                  <Eye className="w-3 h-3" />
-                  <span>View in Fullscreen</span>
-                </button>
               </div>
 
-              <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-widest z-10">
-                <Compass className="w-3 h-3 text-slate-500" />
-                <span>North Orientation</span>
+              <div className="flex justify-between items-center z-10 w-full">
+                <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                  <Compass className="w-3 h-3 text-slate-500" />
+                  <span>North Orientation</span>
+                </div>
+                <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider">
+                  Drag / Swipe to Rotate Room
+                </span>
               </div>
             </div>
 
