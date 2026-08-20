@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import BlueprintLegend from './BlueprintLegend'
 import Room3DViewerModal from './Room3DViewerModal'
-import { Compass, Eye, ShieldCheck, MapPin } from 'lucide-react'
+import { Compass, Eye, ShieldCheck } from 'lucide-react'
 import Image from 'next/image'
 
 type Bed = {
@@ -45,146 +45,166 @@ interface InteractiveBlueprintProps {
 }
 
 export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveBlueprintProps) {
-  // Setup standard list of mockup floors for display matching Mockup 4
+  // Crop layout mappings from the cropped images grid matching Mockup 4
   const mockupFloors = [
-    { id: 'terrace', name: 'Terrace Floor', level: 5 },
-    { id: 'floor3', name: '3rd Floor', level: 3 },
-    { id: 'floor2', name: '2nd Floor', level: 2 },
-    { id: floors.find(f => f.level === 1)?.id || 'floor1', name: '1st Floor', level: 1 },
-    { id: floors.find(f => f.level === 0)?.id || 'ground', name: 'Ground Floor', level: 0 },
-    { id: 'basement', name: 'Basement', level: -1 },
+    { id: 'terrace', name: 'Terrace Floor', level: 7, image: '/blueprint_terrace.jpg' },
+    { id: 'floor6', name: '6th Floor', level: 6, image: '/blueprint_6.jpg' },
+    { id: 'floor5', name: '5th Floor', level: 5, image: '/blueprint_5.jpg' },
+    { id: 'floor4', name: '4th Floor', level: 4, image: '/blueprint_4.jpg' },
+    { id: 'floor3', name: '3rd Floor', level: 3, image: '/blueprint_3.jpg' },
+    { id: 'floor2', name: '2nd Floor', level: 2, image: '/blueprint_2.jpg' },
+    { id: 'floor1', name: '1st Floor', level: 1, image: '/blueprint_1.jpg' },
+    { id: 'ground', name: 'Ground Floor', level: 0, image: '/blueprint_ground.jpg' },
   ]
 
-  const [activeFloorId, setActiveFloorId] = useState<string>(
-    floors.find(f => f.level === 1)?.id || 'floor1'
-  )
+  const [activeFloorId, setActiveFloorId] = useState<string>('floor1')
 
-  // Find current floor level
-  const activeFloor = mockupFloors.find(f => f.id === activeFloorId) || mockupFloors.find(f => f.level === 1)
-  const activeLevel = activeFloor ? activeFloor.level : 1
-  const floorPrefix = activeLevel === 0 ? 'G' : activeLevel === 5 ? 'T' : activeLevel === -1 ? 'B' : `${activeLevel}`
+  // Find active floor level properties
+  const activeFloor = mockupFloors.find(f => f.id === activeFloorId) || mockupFloors[6]
+  const activeLevel = activeFloor.level
+  const floorImage = activeFloor.image
 
-  // Find DB rooms for this floor
-  const dbFloor = floors.find(f => f.level === activeLevel)
-  const currentFloorRooms = dbFloor?.rooms || []
-
-  // If the floor has no rooms seeded, generate them dynamically to show the correct layout prefix
-  const roomsToDisplay = currentFloorRooms.length >= 4 
-    ? currentFloorRooms 
-    : [
+  // Dynamically calculate rooms for each level matching the cropped JPG layout structure
+  const getRoomsForLevel = (level: number) => {
+    if (level === 0) {
+      // Ground Floor Layout
+      return [
         {
-          id: `rm-${floorPrefix}01`,
-          roomNumber: `${floorPrefix}01`,
-          capacity: 3,
+          id: 'rm-reception',
+          roomNumber: 'Reception',
+          capacity: 0,
           hasWashroom: true,
-          beds: [
-            { id: 'b1', identifier: 'A', status: 'VACANT' },
-            { id: 'b2', identifier: 'B', status: 'VACANT' },
-            { id: 'b3', identifier: 'C', status: 'OCCUPIED' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+          beds: [],
+          amenities: [{ id: 'a1', name: 'Reception desk' }]
         },
         {
-          id: `rm-${floorPrefix}02`,
-          roomNumber: `${floorPrefix}02`,
-          capacity: 2,
+          id: 'rm-manager',
+          roomNumber: 'Manager',
+          capacity: 0,
           hasWashroom: true,
-          beds: [
-            { id: 'b4', identifier: 'A', status: 'OCCUPIED' },
-            { id: 'b5', identifier: 'B', status: 'OCCUPIED' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }]
-        },
-        {
-          id: `rm-${floorPrefix}03`,
-          roomNumber: `${floorPrefix}03`,
-          capacity: 2,
-          hasWashroom: true,
-          beds: [
-            { id: 'b6', identifier: 'A', status: 'VACANT' },
-            { id: 'b7', identifier: 'B', status: 'VACANT' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }]
-        },
-        {
-          id: `rm-${floorPrefix}04`,
-          roomNumber: `${floorPrefix}04`,
-          capacity: 3,
-          hasWashroom: true,
-          beds: [
-            { id: 'b8', identifier: 'A', status: 'VACANT' },
-            { id: 'b9', identifier: 'B', status: 'VACANT' },
-            { id: 'b10', identifier: 'C', status: 'VACANT' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
-        },
-        {
-          id: `rm-${floorPrefix}05`,
-          roomNumber: `${floorPrefix}05`,
-          capacity: 2,
-          hasWashroom: true,
-          beds: [
-            { id: 'b11', identifier: 'A', status: 'VACANT' },
-            { id: 'b12', identifier: 'B', status: 'OCCUPIED' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }]
-        },
-        {
-          id: `rm-${floorPrefix}06`,
-          roomNumber: `${floorPrefix}06`,
-          capacity: 4,
-          hasWashroom: true,
-          beds: [
-            { id: 'b13', identifier: 'A', status: 'VACANT' },
-            { id: 'b14', identifier: 'B', status: 'VACANT' },
-            { id: 'b15', identifier: 'C', status: 'OCCUPIED' },
-            { id: 'b16', identifier: 'D', status: 'OCCUPIED' },
-          ],
-          amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+          beds: [],
+          amenities: [{ id: 'a1', name: 'Manager Cabin' }]
         }
       ]
+    }
 
+    if (level === 7) {
+      // Terrace Floor Layout
+      return [
+        {
+          id: 'rm-canteen',
+          roomNumber: 'Canteen',
+          capacity: 0,
+          hasWashroom: false,
+          beds: [],
+          amenities: [{ id: 'a1', name: 'Dining Tables' }]
+        },
+        {
+          id: 'rm-kitchen',
+          roomNumber: 'Kitchen',
+          capacity: 0,
+          hasWashroom: false,
+          beds: [],
+          amenities: [{ id: 'a1', name: 'Commercial Stove' }]
+        }
+      ]
+    }
+
+    // Floors 1 to 6 Layout
+    const f = level
+    const roomNumbers = [
+      `${f}01`, `${f}02`, `${f}03`, `${f}04`,
+      `${f}05`, `${f}06`, `${f}08`
+    ]
+
+    return roomNumbers.map((num, idx) => {
+      // Alternate capacity and vacancy status for rich demo data
+      const capacity = idx === 0 || idx === 3 ? 3 : 2
+      const beds = []
+      for (let b = 0; b < capacity; b++) {
+        // प्रिया, अर्जुन, काव्या, रोहन stays mapping
+        const isOccupied = (f === 1 && num === '101' && b === 2) || // Priya
+                           (f === 1 && num === '101' && b === 1) || // Arjun
+                           (f === 1 && num === '102' && b === 0) || // Kavya
+                           (f === 1 && num === '102' && b === 1) || // Rohan
+                           (idx % 2 === 0 && b === 0) ||
+                           (idx % 3 === 1 && b === 1)
+
+        beds.push({
+          id: `bed-${num}-${b}`,
+          identifier: String.fromCharCode(65 + b),
+          status: isOccupied ? 'OCCUPIED' : 'VACANT'
+        })
+      }
+
+      return {
+        id: `rm-${num}`,
+        roomNumber: num,
+        capacity: capacity,
+        hasWashroom: true,
+        beds: beds,
+        amenities: [{ id: 'a1', name: 'Study Table' }, { id: 'a2', name: 'Wardrobe' }]
+      }
+    })
+  }
+
+  const roomsToDisplay = getRoomsForLevel(activeLevel)
   const [activeRoomId, setActiveRoomId] = useState<string>('')
   const [show3DModal, setShow3DModal] = useState(false)
 
-  // Automatically select the first room whenever roomsToDisplay changes
+  // Automatically select first room on floor switch
   useEffect(() => {
     if (roomsToDisplay.length > 0) {
       setActiveRoomId(roomsToDisplay[0].id)
     }
   }, [activeFloorId, roomsToDisplay.length])
 
+  // Get active room details
+  const activeRoom = roomsToDisplay.find(r => r.id === activeRoomId) || roomsToDisplay[0]
+
   // Helper to determine sharing format name
   const getSharingType = (capacity: number) => {
-    if (capacity === 0) return 'Common Area'
+    if (capacity === 0) return 'Facility Zone'
     if (capacity === 1) return 'Single Occupancy'
     if (capacity === 2) return 'Double Sharing'
     if (capacity === 3) return 'Triple Sharing'
     return `${capacity} Sharing`
   }
 
-  const activeRoom = roomsToDisplay.find(r => r.id === activeRoomId) || roomsToDisplay[0]
-
   // Calculate pricing based on capacity
   const calculatePrice = (capacity: number) => {
+    if (capacity === 0) return 0
     if (capacity === 1) return priceFrom * 1.3
     if (capacity === 2) return priceFrom * 1.0
     return priceFrom * 0.85
   }
 
-  // Get active floor details
-  const activeFloorName = mockupFloors.find(f => f.id === activeFloorId)?.name || '1st Floor'
+  // Get coordinate placements mapping (in percentage) to overlay see-through badges on JPG crop
+  const getCoordinatesForRoom = (num: string, idx: number, level: number) => {
+    if (level === 0) {
+      if (num === 'Reception') return { top: '55%', left: '80%' }
+      if (num === 'Manager') return { top: '25%', left: '80%' }
+      return { top: '50%', left: '35%' }
+    }
+    if (level === 7) {
+      if (num === 'Canteen') return { top: '55%', left: '25%' }
+      if (num === 'Kitchen') return { top: '35%', left: '55%' }
+      return { top: '50%', left: '80%' }
+    }
 
-  // Room placement coordinates overlay map on the architectural floor plan image:
-  // Keyed by room index (0 to 5) mapping to Room X01 to X06
-  const pinCoordinates = [
-    { top: '35%', left: '17%' }, // Room X01 (Left-top)
-    { top: '35%', left: '26%' }, // Room X02 (Left-inner)
-    { top: '38%', left: '59%' }, // Room X03 (Right-inner)
-    { top: '38%', left: '68%' }, // Room X04 (Right-top)
-    { top: '59%', left: '29%' }, // Room X05 (Left-bottom-inner)
-    { top: '59%', left: '37%' }, // Room X06 (Left-bottom)
-  ]
+    // Floors 1 to 6 Layout: 7 rooms total
+    // Index 0 to 3 are top row: 101, 102, 103, 104
+    // Index 4 to 6 are bottom row: 105, 106, 108
+    if (idx < 4) {
+      const leftPositions = ['16%', '29%', '43%', '58%']
+      return { top: '24%', left: leftPositions[idx] }
+    } else {
+      const leftPositions = ['29%', '43%', '58%']
+      return { top: '68%', left: leftPositions[idx - 4] }
+    }
+  }
+
+  const activeFloorName = activeFloor.name
 
   return (
     <div id="layout" className="bg-white border border-slate-205 p-6 rounded-3xl shadow-premium flex flex-col gap-6 w-full mt-4">
@@ -206,7 +226,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono border-b border-slate-200 pb-1.5">
               Select Floor
             </h4>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto scrollbar-thin">
               {mockupFloors.map((floor) => (
                 <button
                   key={floor.id}
@@ -227,7 +247,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
           <BlueprintLegend />
         </div>
 
-        {/* COLUMN 2: Architectural Floor Plan Image Canvas with Overlaid Hotspots (6 columns) */}
+        {/* COLUMN 2: Cropped Floor Plan Image Canvas with Glassmorphism Overlaid Hotspots (6 columns) */}
         <div className="lg:col-span-6 bg-slate-50 border border-slate-205 rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden">
           
           {/* Header Info details */}
@@ -252,7 +272,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                 <span>3D View</span>
               </button>
               <button 
-                onClick={() => alert('CLICKS: Tap on any numbered room marker overlaying the blueprint to inspect details.')}
+                onClick={() => alert('CLICKS: Tap on any semi-transparent glass room card on the layout to inspect detailed status.')}
                 className="bg-white border border-slate-200 text-slate-500 hover:text-slate-800 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
               >
                 How to read layout
@@ -260,29 +280,27 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
             </div>
           </div>
 
-          {/* Blueprint Image Container with absolute hotspot overlay */}
+          {/* Blueprint Image Container with glass hotspot overlays */}
           <div className="relative overflow-x-auto scrollbar-thin py-2">
-            <div className="min-w-[550px] relative aspect-[5/4] w-full rounded-xl overflow-hidden border border-slate-250 bg-white">
+            <div className="min-w-[550px] relative aspect-[5/4.1] w-full rounded-xl overflow-hidden border border-slate-250 bg-white">
               
-              {/* Actual Architectural Blueprint Referral Image */}
+              {/* Cropped Architectural Blueprint Image */}
               <Image
-                src="/blueprint-layout.jpg"
-                alt="Architectural Floor Plan Blueprint"
+                src={floorImage}
+                alt={`${activeFloorName} Layout`}
                 fill
                 priority
                 className="object-contain"
               />
 
-              {/* Overlaid Interactive Room Hotspots */}
-              {roomsToDisplay.slice(0, 6).map((room, idx) => {
-                const coord = pinCoordinates[idx]
+              {/* Overlaid Interactive Room Hotspots styled as glassmorphic see-through overlays */}
+              {roomsToDisplay.map((room, idx) => {
+                const coord = getCoordinatesForRoom(room.roomNumber, idx, activeLevel)
                 const isSelected = activeRoomId === room.id
                 
                 // Determine room availability state
                 const vacantBeds = room.beds.filter(b => b.status === 'VACANT').length
                 const totalBeds = room.beds.length
-                const isVacant = vacantBeds > 0
-                const isFull = vacantBeds === 0
 
                 return (
                   <button
@@ -291,31 +309,43 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                     className="absolute z-20 transition-all duration-300 -translate-x-1/2 -translate-y-1/2 cursor-pointer focus:outline-none"
                     style={{ top: coord.top, left: coord.left }}
                   >
-                    {/* Hotspot Badge container matching Mockup 4 */}
-                    <div className={`px-2.5 py-1.5 rounded-xl border-2 flex flex-col items-center gap-1 shadow-premium hover:scale-105 transition-transform ${
+                    {/* Semi-transparent see-through card to maintain complete visibility of bed graphics underneath */}
+                    <div className={`px-2 py-1 rounded-lg border flex flex-col items-center gap-0.5 shadow-premium-sm transition-all duration-200 ${
                       isSelected 
-                        ? 'border-brand-primary bg-indigo-50/90 text-brand-primary scale-110' 
-                        : 'border-slate-350 bg-white/90 text-slate-800'
+                        ? 'border-brand-primary bg-indigo-50/70 backdrop-blur-[1px] text-brand-primary scale-110' 
+                        : 'border-slate-350 bg-white/20 hover:bg-white/40 backdrop-blur-[0.5px] text-slate-800'
                     }`}>
-                      <span className="text-[9px] font-extrabold font-mono leading-none">
+                      <span className="text-[8px] font-extrabold font-mono leading-none">
                         RM {room.roomNumber}
                       </span>
                       
-                      {/* Bed availability dot indicators */}
-                      <div className="flex gap-0.5 mt-0.5">
-                        {room.beds.map((b) => (
-                          <span 
-                            key={b.id}
-                            className={`w-1.5 h-1.5 rounded-full border-[0.5px] border-black/10 ${
-                              b.status === 'VACANT' ? 'bg-emerald-500' : 'bg-red-500'
-                            }`}
-                          />
-                        ))}
-                      </div>
+                      {/* Bed availability status dot indicators */}
+                      {totalBeds > 0 && (
+                        <div className="flex gap-0.5 mt-0.5">
+                          {room.beds.map((b) => (
+                            <span 
+                              key={b.id}
+                              className={`w-1 h-1 rounded-full border-[0.5px] border-black/10 ${
+                                b.status === 'VACANT' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </button>
                 )
               })}
+
+              {/* Extra static display text for Common Room area on floor plans (1 to 6) */}
+              {activeLevel >= 1 && activeLevel <= 6 && (
+                <div 
+                  className="absolute z-10 -translate-x-1/2 -translate-y-1/2 pointer-events-none px-2 py-1 rounded-lg border border-slate-300 bg-white/20 backdrop-blur-[0.5px] text-slate-600 text-[8px] font-bold"
+                  style={{ top: '68%', left: '16%' }}
+                >
+                  Common Lounge
+                </div>
+              )}
 
             </div>
           </div>
@@ -340,8 +370,14 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                     {getSharingType(activeRoom.capacity)}
                   </span>
                 </div>
-                <span className="bg-emerald-100 text-emerald-700 text-[8px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide">
-                  Available
+                <span className={`text-[8px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wide ${
+                  activeRoom.capacity === 0 
+                    ? 'bg-indigo-100 text-indigo-700' 
+                    : activeRoom.beds.some(b => b.status === 'VACANT')
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-705'
+                }`}>
+                  {activeRoom.capacity === 0 ? 'FACILITY' : activeRoom.beds.some(b => b.status === 'VACANT') ? 'AVAILABLE' : 'FULL'}
                 </span>
               </div>
 
@@ -358,12 +394,14 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
                     {activeRoom.beds.filter(b => b.status === 'VACANT').length}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Rent / Bed</span>
-                  <span className="text-slate-900 font-extrabold">
-                    ₹{calculatePrice(activeRoom.capacity).toLocaleString('en-IN')}/mo
-                  </span>
-                </div>
+                {activeRoom.capacity > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Rent / Bed</span>
+                    <span className="text-slate-900 font-extrabold">
+                      ₹{calculatePrice(activeRoom.capacity).toLocaleString('en-IN')}/mo
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button 
@@ -387,15 +425,15 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
               </div>
               <div className="flex justify-between">
                 <span>Total Beds</span>
-                <span>22</span>
+                <span>{activeLevel === 0 || activeLevel === 7 ? '0' : '22'}</span>
               </div>
               <div className="flex justify-between text-emerald-650">
                 <span>Available Beds</span>
-                <span>6</span>
+                <span>{activeLevel === 0 || activeLevel === 7 ? '0' : '6'}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span>Occupied Beds</span>
-                <span>16</span>
+                <span>{activeLevel === 0 || activeLevel === 7 ? '0' : '16'}</span>
               </div>
               <div className="flex justify-between text-purple-600">
                 <span>Maintenance Beds</span>
@@ -465,7 +503,7 @@ export default function InteractiveBlueprint({ floors, priceFrom }: InteractiveB
       </div>
 
       {/* 3D viewer details modal popup */}
-      {show3DModal && activeRoom && (
+      {show3DModal && activeRoom && activeRoom.capacity > 0 && (
         <Room3DViewerModal
           room={activeRoom}
           priceFrom={priceFrom}
