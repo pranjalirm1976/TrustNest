@@ -102,19 +102,43 @@ export default function Room3DViewerModal({
 
   const roomPrice = calculatePrice(room.capacity)
 
-  // Mock thumbnails for Room 101 slider
-  const sliderImages = [
-    'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80',
-  ]
+  // Dynamically map slider photos to only show bedrooms that match the capacity (e.g. single/double/triple sharing)
+  // This ensures the actual photos and the 3D model look completely consistent and identical in structure!
+  const getSliderImages = (capacity: number) => {
+    if (capacity === 1) {
+      // Single occupancy room photos (navy blue bed cover, dark floor, study area)
+      return [
+        'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80', // Bed, desk, navy details
+        'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80', // Single bed detail
+        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80', // Warm single bedroom
+        'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=600&q=80', // Study area in bedroom
+      ]
+    }
+    if (capacity === 2) {
+      // Double sharing room photos (two beds, dark floor)
+      return [
+        'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80', // Twin beds next to each other
+        'https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=600&q=80', // Double beds modern setup
+        'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80', // Room perspective
+        'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80', // Room desk
+      ]
+    }
+    // Triple sharing room photos ( hostel styling beds, matching bed covers)
+    return [
+      'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80', // Three single beds along the wall
+      'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80', // Triple beds layout
+      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80', // Twin beds section
+      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80', // Single bed study area
+    ]
+  }
 
-  // CSS 3D Room Rendering Helpers
+  const sliderImages = getSliderImages(room.capacity)
+
+  // CSS 3D Room Rendering Helpers - styled in dark wood, navy blankets and white pillows to match unsplash photos exactly!
   const render3DBed = (x: string, y: string, index: number) => {
     const bedItem = room.beds[index]
     const isOccupied = bedItem ? bedItem.status === 'OCCUPIED' : false
-    const colorClass = isOccupied ? 'bg-red-500 border-red-650' : 'bg-emerald-500 border-emerald-650'
+    const statusColor = isOccupied ? 'bg-red-500 border-red-650' : 'bg-emerald-500 border-emerald-650'
     return (
       <div 
         key={`bed-${index}`}
@@ -126,16 +150,18 @@ export default function Room3DViewerModal({
           transform: 'translateZ(1px)' 
         }}
       >
-        {/* Bed Wood Frame Base Box */}
-        <div className="absolute inset-0 bg-amber-800 rounded border border-amber-900" style={{ transform: 'translateZ(2px)' }} />
-        {/* Mattress Box */}
+        {/* Bed Dark Wood Frame Base Box */}
+        <div className="absolute inset-0 bg-[#271d19] rounded border border-stone-900" style={{ transform: 'translateZ(2px)' }} />
+        {/* Mattress Box (White sheets matching actual photo) */}
         <div className="absolute left-[2px] right-[2px] top-[2px] bottom-[2px] bg-slate-50 border border-slate-200 rounded" style={{ transform: 'translateZ(5px)' }} />
-        {/* Blanket/Bedsheet Box */}
-        <div className={`absolute left-[2px] right-[2px] top-[10px] bottom-[2px] rounded-b ${colorClass} border-t border-white/20`} style={{ transform: 'translateZ(6px)' }} />
-        {/* Pillow Box */}
-        <div className="absolute left-[6px] right-[6px] top-[3px] h-2.5 bg-indigo-200 border border-indigo-300 rounded-sm" style={{ transform: 'translateZ(7px)' }} />
+        {/* Blanket/Bedsheet Box (Navy Blue matching actual photo) */}
+        <div className="absolute left-[2px] right-[2px] top-[10px] bottom-[2px] rounded-b bg-[#1e3a8a] border-t border-white/20 border-x border-b border-indigo-950" style={{ transform: 'translateZ(6px)' }} />
+        {/* Bed Status Sash/Runner (Green = Available, Red = Occupied) */}
+        <div className={`absolute left-[2px] right-[2px] bottom-[3px] h-3 ${statusColor} border-y border-white/10`} style={{ transform: 'translateZ(6.5px)' }} />
+        {/* Pillow Box (White matching actual photo) */}
+        <div className="absolute left-[6px] right-[6px] top-[3px] h-3 bg-white border border-slate-250 rounded-sm" style={{ transform: 'translateZ(7px)' }} />
         {/* Label */}
-        <div className="absolute left-0 right-0 -bottom-3 text-[6.5px] font-extrabold text-slate-400 text-center uppercase tracking-wide" style={{ transform: 'translateZ(9px) rotateX(-90deg)' }}>
+        <div className="absolute left-0 right-0 -bottom-3 text-[6.5px] font-extrabold text-slate-450 text-center uppercase tracking-wide" style={{ transform: 'translateZ(9px) rotateX(-90deg)' }}>
           Bed {bedItem ? bedItem.identifier : String.fromCharCode(65 + index)}
         </div>
       </div>
@@ -153,12 +179,12 @@ export default function Room3DViewerModal({
           transform: 'translateZ(1px)' 
         }}
       >
-        {/* Cabinet base face */}
-        <div className="absolute inset-0 bg-amber-900 border border-amber-950 rounded shadow-lg" style={{ transform: 'translateZ(20px)' }} />
+        {/* Cabinet base face in dark wood */}
+        <div className="absolute inset-0 bg-[#1c110d] border border-stone-900 rounded shadow-lg" style={{ transform: 'translateZ(20px)' }} />
         {/* Front vertical face */}
-        <div className="absolute left-0 bottom-0 w-8 h-[20px] bg-amber-800 border-r border-amber-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute left-0 bottom-0 w-8 h-[20px] bg-[#1c110d] border-r border-stone-950 origin-bottom transform rotate-x-90" />
         {/* Side vertical face */}
-        <div className="absolute right-0 top-0 w-[20px] h-8 bg-amber-950 origin-right transform rotate-y-90" />
+        <div className="absolute right-0 top-0 w-[20px] h-8 bg-stone-950 origin-right transform rotate-y-90" />
       </div>
     )
   }
@@ -175,13 +201,13 @@ export default function Room3DViewerModal({
           transform: 'translateZ(1px)' 
         }}
       >
-        {/* Table Top Surface */}
-        <div className="absolute inset-0 bg-orange-700 border border-orange-850 rounded" style={{ transform: 'translateZ(8px)' }} />
+        {/* Table Top Surface in dark wood */}
+        <div className="absolute inset-0 bg-[#251915] border border-stone-900 rounded" style={{ transform: 'translateZ(8px)' }} />
         {/* Table Legs */}
-        <div className="absolute left-0.5 top-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
-        <div className="absolute right-0.5 top-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
-        <div className="absolute left-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
-        <div className="absolute right-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-orange-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute left-0.5 top-0.5 w-[1.5px] h-[8px] bg-stone-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute right-0.5 top-0.5 w-[1.5px] h-[8px] bg-stone-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute left-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-stone-950 origin-bottom transform rotate-x-90" />
+        <div className="absolute right-0.5 bottom-0.5 w-[1.5px] h-[8px] bg-stone-950 origin-bottom transform rotate-x-90" />
       </div>
     )
   }
@@ -333,18 +359,18 @@ export default function Room3DViewerModal({
                       transformStyle: 'preserve-3d' 
                     }}
                   >
-                    {/* Floor (Wood texture panel effect) */}
+                    {/* Floor (Dark Wood texture panel matching actual photos) */}
                     <div 
-                      className="absolute inset-0 bg-[#e7e5e4] border-2 border-slate-700/60 rounded"
+                      className="absolute inset-0 bg-[#2e1f18] border-2 border-stone-900 rounded"
                       style={{ 
-                        backgroundImage: 'repeating-linear-gradient(90deg, #d6d3d1 0px, #d6d3d1 8px, #e7e5e4 8px, #e7e5e4 16px)',
+                        backgroundImage: 'repeating-linear-gradient(90deg, #1c110d 0px, #1c110d 12px, #2e1f18 12px, #2e1f18 24px)',
                         transform: 'translateZ(0px)'
                       }}
                     />
                     
                     {/* Back Wall (North) */}
                     <div 
-                      className="absolute left-0 top-0 h-16 w-64 bg-stone-300/90 border-r border-stone-400 origin-top transform -rotate-x-90 flex items-center justify-center"
+                      className="absolute left-0 top-0 h-16 w-64 bg-[#eae6e1] border-r border-stone-300 origin-top transform -rotate-x-90 flex items-center justify-center"
                       style={{ transformStyle: 'preserve-3d', transform: 'rotateX(-90deg) translateZ(0px)' }}
                     >
                       {/* Window details */}
@@ -355,7 +381,7 @@ export default function Room3DViewerModal({
 
                     {/* Left Wall (West) */}
                     <div 
-                      className="absolute left-0 top-0 h-48 w-16 bg-stone-200/90 border-b border-stone-350 origin-left transform -rotate-y-90 flex items-center justify-center"
+                      className="absolute left-0 top-0 h-48 w-16 bg-[#dfdad3] border-b border-stone-300 origin-left transform -rotate-y-90 flex items-center justify-center"
                       style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-90deg) translateZ(0px)' }}
                     >
                       {/* Door details */}
