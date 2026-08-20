@@ -124,7 +124,7 @@ export const authOptions: NextAuthOptions = {
     signIn: '/admin/login',
     error: '/admin/login'
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'trustnest-super-secret-fallback-key-12345',
   debug: process.env.NODE_ENV === 'development'
 }
 
