@@ -5,6 +5,9 @@ const prisma = new PrismaClient()
 
 async function main() {
   console.log('🧹 Clearing existing database records...')
+  await prisma.trustScoreLog.deleteMany({})
+  await prisma.payment.deleteMany({})
+  await prisma.booking.deleteMany({})
   await prisma.notification.deleteMany({})
   await prisma.nearbyService.deleteMany({})
   await prisma.amenity.deleteMany({})
@@ -31,17 +34,17 @@ async function main() {
   console.log('👤 Seeding security profiles...')
   const passwordHash = await bcrypt.hash('password123', 12)
 
-  // 1. Auditor / Inspector
+  // 1. Super Admin / Platform Owner
   await prisma.user.create({
     data: {
-      name: 'Vikram Joshi',
+      name: 'Vikram Joshi (Super Admin)',
       email: 'admin@trustnest.com',
       passwordHash: passwordHash,
-      role: 'INSPECTOR',
+      role: 'SUPER_ADMIN',
     },
   })
 
-  // 2. Owner
+  // 2. Primary PG Owner
   const owner = await prisma.user.create({
     data: {
       name: 'Rajesh Kumar',
@@ -50,6 +53,75 @@ async function main() {
       role: 'OWNER',
     },
   })
+
+  // Seed Rajesh's TrustNest Subscription (₹2,000/mo)
+  const nextMonth = new Date()
+  nextMonth.setMonth(nextMonth.getMonth() + 1)
+  const rajeshSub = await prisma.ownerSubscription.create({
+    data: {
+      ownerId: owner.id,
+      planName: 'TrustNest PG Pro Plan',
+      amount: 2000.0,
+      status: 'ACTIVE',
+      billingCycle: 'MONTHLY',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: nextMonth,
+      cfSubscriptionId: 'sub_cf_rajesh_2026',
+    }
+  })
+
+  await prisma.subscriptionInvoice.create({
+    data: {
+      subscriptionId: rajeshSub.id,
+      amount: 2000.0,
+      cfOrderId: 'cf_inv_aug2026_rajesh',
+      cfPaymentId: 'cf_pay_998124',
+      status: 'PAID',
+      paidAt: new Date(),
+      billingMonth: 'August 2026'
+    }
+  })
+
+  // Seed additional dummy PG Owners & Subscriptions for platform stats
+  console.log('💳 Seeding 81 platform PG owner subscriptions...')
+  for (let i = 1; i <= 81; i++) {
+    const dummyOwner = await prisma.user.create({
+      data: {
+        name: `PG Owner ${i}`,
+        email: `owner.${i}@trustnest.dummy`,
+        passwordHash,
+        role: 'OWNER'
+      }
+    })
+
+    const status = i <= 77 ? 'ACTIVE' : i <= 80 ? 'PENDING' : 'PAST_DUE'
+    const sub = await prisma.ownerSubscription.create({
+      data: {
+        ownerId: dummyOwner.id,
+        planName: 'TrustNest PG Pro Plan',
+        amount: 2000.0,
+        status,
+        billingCycle: 'MONTHLY',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: nextMonth,
+        cfSubscriptionId: `sub_cf_owner_${i}`,
+      }
+    })
+
+    if (i <= 77) {
+      await prisma.subscriptionInvoice.create({
+        data: {
+          subscriptionId: sub.id,
+          amount: 2000.0,
+          cfOrderId: `cf_inv_aug2026_${i}`,
+          cfPaymentId: `cf_pay_${i}998`,
+          status: 'PAID',
+          paidAt: new Date(),
+          billingMonth: 'August 2026'
+        }
+      })
+    }
+  }
 
   // 3. Primary Tenants
   const tenants = {
@@ -383,6 +455,93 @@ async function main() {
       staffRating: 5,
       comment: 'Excellent and well maintained. Professional management. Clean study desks.',
       isVerifiedResident: true
+    }
+  })
+
+  console.log('💳 Seeding Bookings and Payments...')
+  const booking1 = await prisma.booking.create({
+    data: {
+      userId: tenants.priya.id,
+      propertyId: property.id,
+      startDate: new Date(2026, 4, 1),
+      status: 'CONFIRMED',
+      totalAmount: 8500.0,
+    }
+  })
+
+  await prisma.payment.create({
+    data: {
+      bookingId: booking1.id,
+      amount: 8500.0,
+      status: 'PAID',
+      dueDate: new Date(2026, 7, 5),
+      paidAt: new Date(2026, 7, 4),
+      paymentMethod: 'UPI'
+    }
+  })
+
+  const booking2 = await prisma.booking.create({
+    data: {
+      userId: tenants.rohan.id,
+      propertyId: property.id,
+      startDate: new Date(2026, 4, 1),
+      status: 'CONFIRMED',
+      totalAmount: 8500.0,
+    }
+  })
+
+  await prisma.payment.create({
+    data: {
+      bookingId: booking2.id,
+      amount: 8500.0,
+      status: 'OVERDUE',
+      dueDate: new Date(2026, 7, 5),
+      paymentMethod: null
+    }
+  })
+
+  const booking3 = await prisma.booking.create({
+    data: {
+      userId: tenants.arjun.id,
+      propertyId: property.id,
+      startDate: new Date(2026, 4, 1),
+      status: 'CONFIRMED',
+      totalAmount: 8500.0,
+    }
+  })
+
+  await prisma.payment.create({
+    data: {
+      bookingId: booking3.id,
+      amount: 8500.0,
+      status: 'PENDING',
+      dueDate: new Date(2026, 8, 5),
+      paymentMethod: 'Bank Transfer'
+    }
+  })
+
+  console.log('📊 Seeding Trust Score Log...')
+  await prisma.trustScoreLog.create({
+    data: {
+      propertyId: property.id,
+      score: 4.6,
+      breakdown: JSON.stringify({
+        score: 4.6,
+        reviewsAvg: 4.8,
+        foodAvg: 4.5,
+        totalReviews: 1,
+        totalFoodRatings: 1,
+        slaBreaches: 0,
+        activeFlags: 0,
+        reviewImpact: 2.88,
+        foodImpact: 0.9,
+        slaPenalty: 0,
+        flagPenalty: 0,
+        paymentTimelinessRatio: 92.5,
+        totalPaymentsTracked: 3,
+        overduePayments: 1,
+        paymentPenalty: 0.02
+      })
     }
   })
 

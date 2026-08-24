@@ -19,6 +19,10 @@ type Property = {
   gender: string
   trustScore: number
   images: PropertyImage[]
+  availabilityStatus?: string
+  availableBeds?: number
+  totalBeds?: number
+  occupancyPercentage?: number
 }
 
 interface FeaturedPropertiesProps {
@@ -119,6 +123,32 @@ export default function FeaturedProperties({ properties }: FeaturedPropertiesPro
                         </div>
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Trust Score</span>
                       </div>
+                    </div>
+
+                    {/* Availability Status Bar */}
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          property.availabilityStatus === 'FULL' ? 'bg-red-500' :
+                          property.availabilityStatus === 'LIMITED AVAILABILITY' ? 'bg-amber-500' :
+                          'bg-emerald-500'
+                        }`} />
+                        <span className={`text-[11px] font-bold ${
+                          property.availabilityStatus === 'FULL' ? 'text-red-700' :
+                          property.availabilityStatus === 'LIMITED AVAILABILITY' ? 'text-amber-700' :
+                          'text-emerald-700'
+                        }`}>
+                          {property.availabilityStatus === 'FULL' ? 'Full' :
+                           property.availableBeds !== undefined && property.availableBeds > 0 ? `${property.availableBeds} beds available` :
+                           'Available'}
+                        </span>
+                      </div>
+
+                      {property.totalBeds !== undefined && property.totalBeds > 0 && (
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {property.totalBeds} total beds
+                        </span>
+                      )}
                     </div>
 
                     {/* Divider */}

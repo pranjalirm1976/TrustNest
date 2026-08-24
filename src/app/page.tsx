@@ -6,44 +6,47 @@ import PopularAreas from '@/components/public/PopularAreas'
 import FeaturedProperties from '@/components/public/FeaturedProperties'
 import TransparencySection from '@/components/public/TransparencySection'
 import Footer from '@/components/public/Footer'
+import { calculatePGAvailability } from '@/lib/availability'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
-  // Fetch featured properties with their cover images
+  // Fetch featured properties with images, floors, rooms, beds (only PUBLISHED)
   const properties = await prisma.property.findMany({
+    where: {
+      status: 'PUBLISHED',
+    },
     include: {
-      images: {
-        where: {
-          isCover: true,
+      images: true,
+      amenities: true,
+      floors: {
+        include: {
+          rooms: {
+            include: {
+              beds: true,
+            },
+          },
         },
       },
     },
-    take: 6,
-    orderBy: {
-      trustScore: 'desc',
-    },
+    take: 8,
+    orderBy: [
+      { createdAt: 'desc' },
+      { trustScore: 'desc' },
+    ],
   })
 
-  // Fallback map query if cover image is missing to query first image
-  const propertiesWithFallbackImages = await Promise.all(
-    properties.map(async (property) => {
-      if (property.images.length > 0) {
-        return property
-      }
-      // If no cover image found, fetch first image as fallback
-      const fallbackImages = await prisma.propertyImage.findMany({
-        where: {
-          propertyId: property.id,
-        },
-        take: 1,
-      })
-      return {
-        ...property,
-        images: fallbackImages,
-      }
-    })
-  )
+  // Format properties with calculated availability and fallback cover photos
+  const enhancedProperties = properties.map((property) => {
+    const availability = calculatePGAvailability(property)
+    return {
+      ...property,
+      availabilityStatus: availability.status,
+      availableBeds: availability.availableBeds,
+      totalBeds: availability.totalBeds,
+      occupancyPercentage: availability.occupancyPercentage,
+    }
+  })
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fbfbfb]">
@@ -60,8 +63,8 @@ export default async function Home() {
         {/* Popular Locations */}
         <PopularAreas />
 
-        {/* Dynamic Property Listing */}
-        <FeaturedProperties properties={propertiesWithFallbackImages} />
+        {/* Dynamic Property Listing with real availability */}
+        <FeaturedProperties properties={enhancedProperties as any} />
 
         {/* Score & Calculation transparency section */}
         <TransparencySection />

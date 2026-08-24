@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 
-export interface TrustScoreDetails {
+export interface TrustScoreBreakdown {
   score: number
   reviewsAvg: number
   foodAvg: number
@@ -14,76 +14,53 @@ export interface TrustScoreDetails {
   flagPenalty: number
 }
 
-export async function calculateTrustScore(propertyId: string): Promise<TrustScoreDetails> {
-  // 1. Fetch reviews
-  const reviews = await prisma.propertyReview.findMany({
-    where: { propertyId },
-  })
+export async function calculateTrustScore(propertyId: string): Promise<TrustScoreBreakdown> {
+  const [reviews, complaints, foodRatings, flags] = await Promise.all([
+    prisma.propertyReview.findMany({ where: { propertyId, isVerifiedResident: true } }),
+    prisma.complaint.findMany({ where: { propertyId } }),
+    prisma.foodRating.findMany({ where: { foodMenu: { propertyId } } }),
+    prisma.propertyFlag.findMany({ where: { propertyId, isActive: true } }),
+  ])
 
-  // 2. Fetch food ratings
-  const foodMenus = await prisma.foodMenu.findMany({
-    where: { propertyId },
-    include: {
-      ratings: true,
-    },
-  })
-  const foodRatings = foodMenus.flatMap((menu) => menu.ratings)
+  // Base review score (weighted 60%)
+  const reviewsAvg = reviews.length > 0
+    ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
+    : 4.0
+  const reviewImpact = reviewsAvg * 0.6
 
-  // 3. Fetch complaints to calculate SLA breaches
-  const complaints = await prisma.complaint.findMany({
-    where: { propertyId },
-  })
+  // Food rating score (weighted 20%)
+  const foodAvg = foodRatings.length > 0
+    ? foodRatings.reduce((acc, r) => acc + r.rating, 0) / foodRatings.length
+    : 4.0
+  const foodImpact = foodAvg * 0.2
 
-  // 4. Fetch active flags
-  const activeFlagsList = await prisma.propertyFlag.findMany({
-    where: { propertyId, isActive: true },
-  })
-
-  // Calculate Averages
-  const totalReviews = reviews.length
-  const reviewsAvg = totalReviews > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
-    : 5.0 // default base if no reviews
-
-  const totalFoodRatings = foodRatings.length
-  const foodAvg = totalFoodRatings > 0
-    ? foodRatings.reduce((sum, r) => sum + r.rating, 0) / totalFoodRatings
-    : 5.0 // default base if no food ratings
-
-  // Calculate SLA Breaches
-  // A breach occurs if resolved late (resolvedAt > slaDeadline) or unresolved and past deadline
+  // SLA violations (complaints where resolvedAt > slaDeadline, or past deadline unresolved)
   const now = new Date()
-  const slaBreaches = complaints.filter((c) => {
-    const isLate = c.status === 'RESOLVED' && c.resolvedAt && new Date(c.resolvedAt) > new Date(c.slaDeadline)
-    const isOverdue = c.status !== 'RESOLVED' && c.status !== 'REJECTED' && now > new Date(c.slaDeadline)
-    return isLate || isOverdue
+  const slaBreaches = complaints.filter(c => {
+    if (c.resolvedAt) return c.resolvedAt > c.slaDeadline
+    return now > c.slaDeadline
   }).length
+  const slaPenalty = slaBreaches * 0.15
 
-  const activeFlags = activeFlagsList.length
+  // Active platform flags penalty (0.25 per active flag)
+  const activeFlags = flags.length
+  const flagPenalty = activeFlags * 0.25
 
-  // Weighted Breakdown (reviews 50%, food 50%)
-  const reviewImpact = reviewsAvg * 0.5
-  const foodImpact = foodAvg * 0.5
-  
-  // Penalties
-  const slaPenalty = slaBreaches * 0.2
-  const flagPenalty = activeFlags * 0.4
-
-  // Final Score Clamped between 1.0 and 5.0
-  const calculatedScore = reviewImpact + foodImpact - slaPenalty - flagPenalty
-  const score = parseFloat(Math.max(1.0, Math.min(5.0, calculatedScore)).toFixed(2))
+  // Final TrustNest Score (max 5.0, min 0)
+  const rawScore = reviewImpact + foodImpact - slaPenalty - flagPenalty
+  const score = Number(Math.max(0, Math.min(5, rawScore)).toFixed(2))
 
   return {
     score,
-    reviewsAvg: parseFloat(reviewsAvg.toFixed(2)),
-    foodAvg: parseFloat(foodAvg.toFixed(2)),
-    totalReviews,
-    totalFoodRatings,
+    reviewsAvg: Number(reviewsAvg.toFixed(2)),
+    foodAvg: Number(foodAvg.toFixed(2)),
+    totalReviews: reviews.length,
+    totalFoodRatings: foodRatings.length,
     slaBreaches,
     activeFlags,
-    reviewImpact: parseFloat(reviewImpact.toFixed(2)),
-    foodImpact: parseFloat(foodImpact.toFixed(2)),
-    slaPenalty: parseFloat(slaPenalty.toFixed(2)),
-    flagPenalty: parseFloat(flagPenalty.toFixed(2)),
+    reviewImpact: Number(reviewImpact.toFixed(2)),
+    foodImpact: Number(foodImpact.toFixed(2)),
+    slaPenalty: Number(slaPenalty.toFixed(2)),
+    flagPenalty: Number(flagPenalty.toFixed(2)),
   }
 }

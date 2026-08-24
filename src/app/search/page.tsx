@@ -1,19 +1,44 @@
 import { prisma } from '@/lib/prisma'
 import SearchClient from '@/components/search/SearchClient'
+import { calculatePGAvailability } from '@/lib/availability'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SearchPage() {
-  // Query all properties with their images and amenities
+  // Query only verified & published properties with images, amenities, and floor/room inventory
   const properties = await prisma.property.findMany({
+    where: {
+      status: 'PUBLISHED',
+    },
     include: {
       images: true,
       amenities: true,
+      floors: {
+        include: {
+          rooms: {
+            include: {
+              beds: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       trustScore: 'desc',
     },
   })
 
-  return <SearchClient initialProperties={properties} />
+  // Enhance properties with real computed availability
+  const enhancedProperties = properties.map((property) => {
+    const availability = calculatePGAvailability(property)
+    return {
+      ...property,
+      availabilityStatus: availability.status,
+      availableBeds: availability.availableBeds,
+      totalBeds: availability.totalBeds,
+      occupancyPercentage: availability.occupancyPercentage,
+    }
+  })
+
+  return <SearchClient initialProperties={enhancedProperties as any} />
 }

@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import Navbar from '@/components/public/Navbar'
 import Footer from '@/components/public/Footer'
 import ImageGallery from '@/components/property/ImageGallery'
@@ -79,6 +81,17 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
   if (!property) {
     notFound()
+  }
+
+  // Guard: If property is SUSPENDED or not PUBLISHED, only allow Owner or Super Admin to view
+  if (property.status !== 'PUBLISHED') {
+    const session = await getServerSession(authOptions)
+    const isOwner = session?.user?.id === property.ownerId
+    const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'INSPECTOR'
+
+    if (!isOwner && !isSuperAdmin) {
+      notFound()
+    }
   }
 
   const trustStats = await calculateTrustScore(property.id)

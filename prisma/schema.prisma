@@ -22,11 +22,14 @@ model User {
   // Relations
   properties   Property[]     @relation("PropertyOwner")
   stays        ResidentStay[]
+  bookings     Booking[]
   foodRatings  FoodRating[]
   complaints   Complaint[]
   comments     ComplaintComment[]
   reviews      PropertyReview[]
   notifications Notification[]
+  subscriptions OwnerSubscription[]
+  payoutAccount OwnerPayoutAccount?
   
   @@map("users")
 }
@@ -35,12 +38,14 @@ model Property {
   id          String         @id @default(cuid())
   ownerId     String
   name        String
+  description String?
   address     String
   latitude    Float          // For discovery map rendering
   longitude   Float          // For discovery map rendering
   priceFrom   Float          // Displayed base price for bookings
   gender      String         @default("UNISEX") // "MALE" | "FEMALE" | "UNISEX"
   trustScore  Float          @default(5.0)
+  status      String         @default("PUBLISHED") // "DRAFT" | "PENDING_VERIFICATION" | "VERIFIED" | "PUBLISHED" | "REJECTED"
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   
@@ -55,6 +60,8 @@ model Property {
   cleaning    CleaningTask[]
   amenities   Amenity[]
   services    NearbyService[]
+  bookings    Booking[]
+  trustScoreLogs TrustScoreLog[]
   
   @@map("properties")
 }
@@ -64,6 +71,7 @@ model PropertyImage {
   propertyId  String
   url         String
   altText     String?
+  category    String?  @default("general") // "exterior" | "lobby" | "common" | "bedroom" | "dining" | "facilities" | "general"
   isCover     Boolean  @default(false)
   createdAt   DateTime @default(now())
   
@@ -77,6 +85,7 @@ model Floor {
   propertyId String
   level      Int      // 0 for Ground, 1 for First Floor, etc.
   name       String   // "Ground Floor", "First Floor", etc.
+  layoutUrl  String?  // Architectural blueprint image URL
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   
@@ -104,7 +113,11 @@ model Room {
   floorId      String
   roomNumber   String   // "101", "102", "Reception", etc.
   capacity     Int      // Maximum number of beds/occupants
+  sharingType  String?  @default("DOUBLE") // "SINGLE" | "DOUBLE" | "TRIPLE" | "FOUR" | "FACILITY"
   hasWashroom  Boolean  @default(false)
+  hasAc        Boolean  @default(false)
+  hasBalcony   Boolean  @default(false)
+  pricePerBed  Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
@@ -353,4 +366,104 @@ model Notification {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("notifications")
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  userId      String
+  propertyId  String
+  bedId       String?
+  startDate   DateTime
+  endDate     DateTime?
+  status      String        @default("CONFIRMED") // "PENDING" | "CONFIRMED" | "CANCELLED"
+  totalAmount Float
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+
+  @@map("bookings")
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  bookingId     String
+  amount        Float
+  status        String    @default("PENDING") // "PENDING" | "PAID" | "OVERDUE"
+  dueDate       DateTime?
+  paidAt        DateTime?
+  paymentMethod String?   // "UPI" | "CASH" | "BANK_TRANSFER" | "CARD"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model TrustScoreLog {
+  id         String   @id @default(cuid())
+  propertyId String
+  score      Float
+  breakdown  String   // JSON string
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("trust_score_logs")
+}
+
+model OwnerSubscription {
+  id                 String    @id @default(cuid())
+  ownerId            String
+  planName           String    @default("TRUSTNEST_PRO") // e.g. "₹2,000 / month"
+  amount             Float     @default(2000.0)
+  status             String    @default("ACTIVE") // "ACTIVE" | "PENDING" | "PAST_DUE" | "CANCELLED" | "EXPIRED"
+  billingCycle       String    @default("MONTHLY")
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  cfSubscriptionId   String?   // Cashfree Subscription ID
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  owner              User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  invoices           SubscriptionInvoice[]
+
+  @@map("owner_subscriptions")
+}
+
+model SubscriptionInvoice {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  amount         Float
+  cfOrderId      String?   @unique
+  cfPaymentId    String?
+  status         String    @default("PAID") // "PENDING" | "PAID" | "FAILED"
+  paidAt         DateTime?
+  receiptUrl     String?
+  billingMonth   String
+  createdAt      DateTime  @default(now())
+
+  subscription   OwnerSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("subscription_invoices")
+}
+
+model OwnerPayoutAccount {
+  id             String    @id @default(cuid())
+  ownerId        String    @unique
+  accountHolder  String
+  accountNumber  String
+  ifscCode       String
+  upiVpa         String?
+  cfVendorId     String?   // Cashfree Easy Split Vendor ID
+  isVerified     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("owner_payout_accounts")
 }

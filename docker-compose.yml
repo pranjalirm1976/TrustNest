@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  trustnest-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trustnest-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=trustnest-super-secure-jwt-production-secret-key-32-chars
+      - DATABASE_URL=file:/app/prisma/dev.db
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+      - ./public/uploads:/app/public/uploads

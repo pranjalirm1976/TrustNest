@@ -1,6 +1,6 @@
 import { User, Property, Floor, Room, Bed } from '@prisma/client'
 
-export type Role = 'TENANT' | 'OWNER' | 'INSPECTOR'
+export type Role = 'TENANT' | 'USER' | 'OWNER' | 'PG_OWNER' | 'SUPER_ADMIN' | 'INSPECTOR'
 export type BedStatus = 'VACANT' | 'OCCUPIED' | 'MAINTENANCE'
 
 // Base types from Prisma

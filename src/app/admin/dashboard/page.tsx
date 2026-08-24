@@ -7,7 +7,7 @@ import DashboardClient from '@/components/admin/DashboardClient'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard | TrustNest',
+  title: 'Owner Dashboard | TrustNest',
   description: 'TrustNest PG Management Dashboard',
 }
 
@@ -20,12 +20,10 @@ export default async function AdminDashboard() {
     redirect('/admin/login')
   }
 
-  // Double check admin roles
   if (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR') {
     redirect('/unauthorized')
   }
 
-  // 1. Query properties owned by this admin
   const properties = await prisma.property.findMany({
     where: {
       ownerId: session.user.id,
@@ -38,95 +36,60 @@ export default async function AdminDashboard() {
 
   const propertyIds = properties.map((p) => p.id)
 
-  // 2. Query total residents (active stays) in owner's properties
   const totalResidents = await prisma.residentStay.count({
     where: {
       status: 'ACTIVE',
-      bed: {
-        room: {
-          floor: {
-            propertyId: {
-              in: propertyIds,
-            },
-          },
-        },
-      },
+      bed: { room: { floor: { propertyId: { in: propertyIds } } } },
     },
   })
 
-  // 3. Query total beds to compute available beds
   const totalBedsCount = await prisma.bed.count({
     where: {
-      room: {
-        floor: {
-          propertyId: {
-            in: propertyIds,
-          },
-        },
-      },
+      room: { floor: { propertyId: { in: propertyIds } } },
+    },
+  })
+
+  const totalRoomsCount = await prisma.room.count({
+    where: {
+      floor: { propertyId: { in: propertyIds } },
     },
   })
 
   const availableBeds = Math.max(0, totalBedsCount - totalResidents)
 
-  // 4. Query total paid revenue from stay billing logs
-  const payments = await prisma.rentPayment.findMany({
+  const paidPayments = await prisma.rentPayment.findMany({
     where: {
       status: 'PAID',
-      stay: {
-        bed: {
-          room: {
-            floor: {
-              propertyId: {
-                in: propertyIds,
-              },
-            },
-          },
-        },
-      },
+      stay: { bed: { room: { floor: { propertyId: { in: propertyIds } } } } },
     },
-    select: {
-      amount: true,
-    },
+    select: { amount: true },
   })
+  const monthlyCollection = paidPayments.reduce((sum, p) => sum + p.amount, 0)
 
-  const monthlyCollection = payments.reduce((sum, p) => sum + p.amount, 0)
+  const pendingPayments = await prisma.rentPayment.findMany({
+    where: {
+      status: 'PENDING',
+      stay: { bed: { room: { floor: { propertyId: { in: propertyIds } } } } },
+    },
+    select: { amount: true },
+  })
+  const pendingRent = pendingPayments.reduce((sum, p) => sum + p.amount, 0)
 
-  // 5. Query incoming tenant complaints for these properties
   const complaints = await prisma.complaint.findMany({
     where: {
-      propertyId: {
-        in: propertyIds,
-      },
+      propertyId: { in: propertyIds },
     },
     include: {
-      tenant: {
-        select: {
-          name: true,
-        },
-      },
-      property: {
-        select: {
-          name: true,
-        },
-      },
+      tenant: { select: { name: true } },
+      property: { select: { name: true } },
       comments: {
         include: {
-          author: {
-            select: {
-              name: true,
-              role: true,
-            },
-          },
+          author: { select: { name: true, role: true } },
         },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        orderBy: { createdAt: 'asc' },
       },
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: { createdAt: 'desc' },
   })
 
   const openComplaints = complaints.filter(
@@ -140,7 +103,7 @@ export default async function AdminDashboard() {
       new Date() > new Date(c.slaDeadline)
   ).length
 
-  // Calculate detailed Trust Scores and active flags for each property managed by owner
+  // Calculate detailed Trust Scores
   const propertyDetails = await Promise.all(
     properties.map(async (p) => {
       const breakdown = await calculateTrustScore(p.id)
@@ -167,9 +130,13 @@ export default async function AdminDashboard() {
       properties={properties}
       complaints={complaints}
       stats={{
+        totalPGs: properties.length,
+        totalRooms: totalRoomsCount,
         totalResidents,
+        occupiedBeds: totalResidents,
         availableBeds,
         monthlyCollection,
+        pendingRent,
         openComplaints,
         activeViolations,
       }}

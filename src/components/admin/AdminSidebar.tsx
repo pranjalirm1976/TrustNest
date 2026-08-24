@@ -9,37 +9,35 @@ import {
   MessageSquareWarning, 
   Settings,
   Menu,
-  X
+  X,
+  FilePlus2,
+  Layers,
+  BedDouble,
+  Utensils,
+  CreditCard,
+  Star,
+  Activity,
+  ShieldCheck,
+  BarChart3
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/admin/dashboard',
-    icon: LayoutDashboard
-  },
-  {
-    name: 'Properties',
-    href: '/admin/properties',
-    icon: Building2
-  },
-  {
-    name: 'Tenants',
-    href: '/admin/tenants',
-    icon: Users
-  },
-  {
-    name: 'Complaints',
-    href: '/admin/complaints',
-    icon: MessageSquareWarning
-  },
-  {
-    name: 'Settings',
-    href: '/admin/settings',
-    icon: Settings
-  }
+  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'My PGs', href: '/admin/properties', icon: Building2 },
+  { name: 'PG Registration', href: '/admin/registration', icon: FilePlus2 },
+  { name: 'Floors & Layouts', href: '/admin/floors', icon: Layers },
+  { name: 'Rooms & Beds', href: '/admin/rooms', icon: BedDouble },
+  { name: 'Residents', href: '/admin/tenants', icon: Users },
+  { name: 'Food & Menu', href: '/admin/food', icon: Utensils },
+  { name: 'Complaints', href: '/admin/complaints', icon: MessageSquareWarning },
+  { name: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Reviews', href: '/admin/reviews', icon: Star },
+  { name: 'Performance', href: '/admin/performance', icon: Activity },
+  { name: 'Verification', href: '/admin/verification', icon: ShieldCheck },
+  { name: 'Settings', href: '/admin/settings', icon: Settings }
 ]
 
 export function AdminSidebar() {
@@ -52,12 +50,12 @@ export function AdminSidebar() {
       <div className="fixed top-4 left-4 z-50 lg:hidden">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="inline-flex items-center justify-center p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm border border-slate-200"
         >
           {isMobileMenuOpen ? (
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           ) : (
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           )}
         </button>
       </div>
@@ -72,29 +70,31 @@ export function AdminSidebar() {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-[260px] bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-y-auto",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col min-h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 border-b border-slate-700">
+          <div className="flex items-center h-16 px-6 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                <Building2 className="w-5 h-5 text-white" />
               </div>
-              <div className="text-white">
-                <h1 className="text-lg font-bold">
-                  Trust<span className="text-emerald-400">Nest</span>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">
+                  TrustNest
                 </h1>
-                <p className="text-xs text-slate-400">Admin Panel</p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || 
+                (item.href === '/admin/payments' && (pathname === '/owner/financials' || pathname === '/admin/payments')) || 
+                (item.href === '/admin/analytics' && (pathname === '/owner/analytics' || pathname === '/admin/analytics')) || 
+                (item.href === '/admin/settings' && (pathname === '/owner/settings' || pathname === '/admin/settings'))
               const Icon = item.icon
 
               return (
@@ -103,32 +103,24 @@ export function AdminSidebar() {
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
                     isActive
-                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800"
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   )}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className={cn("w-5 h-5 flex-shrink-0", isActive ? "text-indigo-600" : "text-slate-400")} />
                   <span>{item.name}</span>
-                  
-                  {/* Active indicator */}
-                  {isActive && (
-                    <div className="ml-auto w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
-                  )}
                 </Link>
               )
             })}
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slate-700">
-            <div className="text-center">
-              <p className="text-xs text-slate-500">
+          <div className="p-4 border-t border-slate-100 shrink-0">
+            <div className="px-3">
+              <p className="text-xs font-medium text-slate-500">
                 TrustNest Admin v1.0
-              </p>
-              <p className="text-xs text-slate-600 mt-1">
-                Secure Property Management
               </p>
             </div>
           </div>

@@ -18,6 +18,9 @@ type Property = {
   trustScore: number
   images: PropertyImage[]
   amenities: { id: string; name: string }[]
+  availabilityStatus?: string
+  availableBeds?: number
+  totalBeds?: number
 }
 
 interface PropertyListCardProps {
@@ -71,10 +74,21 @@ export default function PropertyListCard({
           {/* Header row */}
           <div className="flex justify-between items-start gap-4">
             <div className="min-w-0">
-              <span className="bg-brand-success-light text-brand-success text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md border border-brand-success/15 inline-flex items-center gap-1 mb-1">
-                <span className="w-1 h-1 bg-brand-success rounded-full" />
-                Verified stay
-              </span>
+              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                <span className="bg-brand-success-light text-brand-success text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md border border-brand-success/15 inline-flex items-center gap-1">
+                  <span className="w-1 h-1 bg-brand-success rounded-full" />
+                  Verified stay
+                </span>
+                <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                  property.availabilityStatus === 'FULL' ? 'bg-red-50 text-red-700 border-red-200' :
+                  property.availabilityStatus === 'LIMITED AVAILABILITY' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                  'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  {property.availabilityStatus === 'FULL' ? '🔴 Full' :
+                   property.availableBeds !== undefined && property.availableBeds > 0 ? `🟢 ${property.availableBeds} beds free` :
+                   '🟢 Available'}
+                </span>
+              </div>
               <h3 className="text-lg font-bold text-slate-900 truncate">
                 <Link href={`/pg/${property.id}`} className="hover:text-brand-primary transition-colors">
                   {property.name}
