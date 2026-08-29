@@ -102,10 +102,10 @@ export default async function OwnerFinancialsPage() {
     ...bookingPayments.map(p => ({
       id: p.id,
       date: new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(p.createdAt)),
-      resident: p.booking.user.name,
-      room: `${p.booking.property.name}`,
+      resident: p.booking?.user?.name || 'Resident',
+      room: `${p.booking?.property?.name || 'PG Stay'}`,
       amount: p.amount,
-      method: p.paymentMethod || '-',
+      method: p.paymentMethod || 'DEMO',
       status: (p.status as any) || 'PENDING',
       isBookingPayment: true
     })),

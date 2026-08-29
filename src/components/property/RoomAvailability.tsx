@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, ShieldAlert, Bed as BedIcon, Phone, MessageSquare, Star, SlidersHorizontal, Map, CheckCircle } from 'lucide-react'
+import { Check, ShieldAlert, Bed as BedIcon, Phone, MessageSquare, Star, SlidersHorizontal, Map, CheckCircle, ShieldCheck } from 'lucide-react'
 import Image from 'next/image'
+import BookingModal from './BookingModal'
+import ChatWithOwnerModal from './ChatWithOwnerModal'
 
 type Bed = {
   id: string
@@ -25,13 +27,23 @@ type Room = {
 }
 
 interface RoomAvailabilityProps {
+  property?: {
+    id: string
+    name: string
+    address: string
+    priceFrom: number
+  }
   rooms: Room[]
+  floors?: any[]
   priceFrom: number
   onViewBlueprint?: () => void
 }
 
-export default function RoomAvailability({ rooms, priceFrom, onViewBlueprint }: RoomAvailabilityProps) {
+export default function RoomAvailability({ property, rooms, floors = [], priceFrom, onViewBlueprint }: RoomAvailabilityProps) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [showChatModal, setShowChatModal] = useState(false)
+  const [selectedBedIdToBook, setSelectedBedIdToBook] = useState<string>('')
   
   // Filters states
   const [roomType, setRoomType] = useState('All')
@@ -226,34 +238,62 @@ export default function RoomAvailability({ rooms, priceFrom, onViewBlueprint }: 
                         Bed Availability
                       </span>
                       <div className="flex gap-2">
-                        {room.beds.map((bed) => (
-                          <div 
-                            key={bed.id}
-                            title={`Bed ${bed.identifier} (${bed.status})`}
-                            className={`p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 min-w-[50px] transition-all ${
-                              bed.status === 'VACANT' 
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700' 
-                                : 'border-red-200 bg-red-50 text-red-600'
-                            }`}
-                          >
-                            <BedIcon className="w-3.5 h-3.5" />
-                            <span className="text-[8px] font-bold font-mono">{bed.status === 'VACANT' ? 'Available' : 'Occupied'}</span>
-                          </div>
-                        ))}
+                        {room.beds.map((bed) => {
+                          const isVacant = bed.status === 'VACANT'
+                          const isReserved = bed.status === 'RESERVED' || bed.status === 'MAINTENANCE'
+                          return (
+                            <button
+                              key={bed.id}
+                              type="button"
+                              onClick={() => {
+                                if (isVacant) {
+                                  setSelectedRoomId(room.id)
+                                  setSelectedBedIdToBook(bed.id)
+                                  setShowBookingModal(true)
+                                }
+                              }}
+                              title={`Bed ${bed.identifier} (${bed.status})${isVacant ? ' - Click to Book' : ''}`}
+                              className={`p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 min-w-[52px] transition-all ${
+                                isVacant 
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm' 
+                                  : isReserved
+                                  ? 'border-amber-200 bg-amber-50 text-amber-700 cursor-default'
+                                  : 'border-red-200 bg-red-50 text-red-600 cursor-default'
+                              }`}
+                            >
+                              <BedIcon className="w-3.5 h-3.5" />
+                              <span className="text-[8px] font-bold font-mono">
+                                {isVacant ? `Bed ${bed.identifier}` : isReserved ? 'Reserved' : 'Occupied'}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
 
                     {/* Action trigger button */}
-                    <div className="shrink-0 flex items-center">
+                    <div className="shrink-0 flex items-center gap-2">
                       <button 
                         onClick={() => setSelectedRoomId(selectedRoomId === room.id ? null : room.id)}
-                        className={`text-xs font-bold px-4 py-2.5 rounded-xl border transition-all cursor-pointer shadow-premium-sm ${
+                        className={`text-xs font-bold px-3 py-2 rounded-xl border transition-all cursor-pointer shadow-premium-sm ${
                           isSelected 
-                            ? 'bg-brand-primary text-white border-brand-primary' 
-                            : 'bg-white text-brand-primary border-brand-primary hover:bg-indigo-50/20'
+                            ? 'bg-slate-900 text-white border-slate-900' 
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        View Details
+                        Details
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedRoomId(room.id)
+                          const vacantBed = room.beds.find(b => b.status === 'VACANT')
+                          setSelectedBedIdToBook(vacantBed?.id || '')
+                          setShowBookingModal(true)
+                        }}
+                        className="text-xs font-bold px-3.5 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white transition-all cursor-pointer shadow-premium-sm"
+                      >
+                        Book
                       </button>
                     </div>
 
@@ -362,29 +402,13 @@ export default function RoomAvailability({ rooms, priceFrom, onViewBlueprint }: 
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <button 
-                onClick={() => alert('Calling owner...')}
-                className="border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
-              >
-                <Phone className="w-3 h-3" />
-                <span>Call</span>
-              </button>
-              <button 
-                onClick={() => alert('WhatsApping owner...')}
-                className="border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
-              >
-                <CheckCircle className="w-3 h-3 text-emerald-600" />
-                <span>WhatsApp</span>
-              </button>
-              <button 
-                onClick={() => alert('Messaging owner...')}
-                className="border border-slate-200 hover:bg-slate-50 text-slate-600 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
-              >
-                <MessageSquare className="w-3 h-3" />
-                <span>Message</span>
-              </button>
-            </div>
+            <button 
+              onClick={() => setShowChatModal(true)}
+              className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-2 mt-2 shadow-sm"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat with Owner (In-App)</span>
+            </button>
           </div>
 
           {/* Top Rated PG in Hinjawadi */}
@@ -403,6 +427,25 @@ export default function RoomAvailability({ rooms, priceFrom, onViewBlueprint }: 
         </div>
 
       </div>
+
+      {showBookingModal && property && (
+        <BookingModal
+          property={property}
+          floors={floors}
+          initialRoomId={selectedRoomId || undefined}
+          initialBedId={selectedBedIdToBook || undefined}
+          onClose={() => setShowBookingModal(false)}
+        />
+      )}
+
+      {showChatModal && property && (
+        <ChatWithOwnerModal
+          propertyId={property.id}
+          propertyName={property.name}
+          ownerName="Property Manager"
+          onClose={() => setShowChatModal(false)}
+        />
+      )}
 
     </div>
   )

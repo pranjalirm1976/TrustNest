@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { uploadLocalFile } from '@/lib/upload'
+import { getEmailService } from '@/services/email'
 
 /**
  * Creates and registers a new PG property in Prisma with:
@@ -227,7 +228,8 @@ export async function registerProperty(formData: FormData) {
           data: bedsToCreate.map(b => ({
             roomId: createdRoom.id,
             identifier: b.identifier,
-            status: b.status || 'VACANT'
+            status: b.status || 'VACANT',
+            isTrustNestInventory: (b as any).isTrustNestInventory ?? (b.status !== 'OWNER_MANAGED')
           }))
         })
       }
@@ -244,16 +246,59 @@ export async function registerProperty(formData: FormData) {
       })
     }
 
-    // 6. Revalidate All Public & Admin Routes
-    revalidatePath('/')
-    revalidatePath('/search')
-    revalidatePath(`/pg/${property.id}`)
-    revalidatePath('/admin/dashboard')
-    revalidatePath('/admin/properties')
-    revalidatePath('/admin/floors')
-    revalidatePath('/admin/rooms')
-    revalidatePath('/admin/verification')
-    revalidatePath('/super-admin')
+    // 6. Notify Super Admins of New PG Verification Request
+    const superAdmins = await prisma.user.findMany({
+      where: { role: 'SUPER_ADMIN' }
+    })
+
+    for (const admin of superAdmins) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          title: `🔔 New PG Verification Request: ${property.name}`,
+          message: `PG: ${property.name} | Owner: ${session.user.name || 'PG Owner'} | Location: ${address} | Status: PENDING_VERIFICATION. Click to review in Super Admin queue.`,
+          type: 'SLA'
+        }
+      }).catch(err => console.error('Super admin notification error:', err))
+    }
+
+    // 7. Non-blocking Email Dispatch
+    try {
+      const emailService = getEmailService()
+      if (session.user.email) {
+        emailService.sendPGVerificationSubmitted({
+          ownerEmail: session.user.email,
+          ownerName: session.user.name || 'PG Owner',
+          propertyName: property.name,
+          propertyLocation: address
+        }).catch(err => console.error('Owner verification email error:', err))
+      }
+
+      if (superAdmins[0]?.email) {
+        emailService.sendSuperAdminPGAlert({
+          adminEmail: superAdmins[0].email,
+          ownerName: session.user.name || 'PG Owner',
+          propertyName: property.name,
+          location: address,
+          propertyId: property.id
+        }).catch(err => console.error('Super admin email error:', err))
+      }
+    } catch (emailErr: any) {
+      console.warn('Non-blocking PG verification email error:', emailErr.message)
+    }
+
+    // 8. Revalidate All Public & Admin Routes
+    try {
+      revalidatePath('/')
+      revalidatePath('/search')
+      revalidatePath(`/pg/${property.id}`)
+      revalidatePath('/admin/properties')
+      revalidatePath('/admin/subscription')
+      revalidatePath('/admin/floors')
+      revalidatePath('/admin/rooms')
+      revalidatePath('/admin/verification')
+      revalidatePath('/super-admin')
+    } catch (_) {}
 
     return {
       success: true,

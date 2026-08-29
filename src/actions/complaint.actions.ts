@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { evaluatePropertyFlags } from './trust.actions'
+import { getEmailService } from '@/services/email'
 
 // Existing functions
 interface CreateComplaintInput {
@@ -52,7 +53,40 @@ export async function createComplaint(data: CreateComplaintInput) {
       severity: data.severity,
       slaDeadline,
     },
+    include: {
+      property: {
+        include: { owner: true }
+      }
+    }
   })
+
+  // Notify Owner
+  if (complaint.property?.ownerId) {
+    await prisma.notification.create({
+      data: {
+        userId: complaint.property.ownerId,
+        title: `🚨 24h SLA Complaint Raised: ${data.title}`,
+        message: `Resident raised a ${data.category} complaint for ${complaint.property.name}. Resolution deadline: ${slaDeadline.toLocaleTimeString('en-IN')}.`,
+        type: 'SLA'
+      }
+    }).catch(err => console.error('Notification error:', err))
+
+    // Non-blocking Email Dispatch
+    try {
+      if (complaint.property.owner?.email) {
+        getEmailService().sendComplaintNotification({
+          recipientEmail: complaint.property.owner.email,
+          recipientName: complaint.property.owner.name || 'PG Owner',
+          propertyName: complaint.property.name,
+          complaintTitle: data.title,
+          category: data.category,
+          slaDeadline,
+          isOwner: true
+        }).catch(err => console.error('Complaint email error:', err))
+      }
+    } catch (_) {}
+  }
+
   revalidatePath('/tenant/complaints')
   revalidatePath('/tenant/dashboard')
   revalidatePath('/admin/complaints')

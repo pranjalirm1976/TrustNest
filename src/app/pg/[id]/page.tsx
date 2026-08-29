@@ -164,10 +164,22 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           {/* Right Column: Check Availability and Talk to Owner (4 columns) */}
           <div className="hidden lg:col-span-4 lg:flex flex-col gap-6">
             {/* Check Availability */}
-            <CheckAvailabilityCard />
+            <CheckAvailabilityCard 
+              property={{
+                id: property.id,
+                name: property.name,
+                address: property.address,
+                priceFrom: property.priceFrom,
+              }}
+              floors={property.floors}
+            />
 
-            {/* Talk to Owner */}
-            <TalkToOwnerCard ownerName={property.owner.name} />
+            {/* Talk to Owner with In-App Chat */}
+            <TalkToOwnerCard 
+              ownerName={property.owner.name} 
+              propertyId={property.id}
+              propertyName={property.name}
+            />
           </div>
 
         </div>
@@ -178,7 +190,16 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Room Inventory & Layouts</h2>
             <p className="text-sm text-slate-500">Explore interactive 2D blueprint layouts and 3D room visualizers.</p>
           </div>
-          <InteractiveBlueprint floors={property.floors} priceFrom={property.priceFrom} />
+          <InteractiveBlueprint 
+            property={{
+              id: property.id,
+              name: property.name,
+              address: property.address,
+              priceFrom: property.priceFrom,
+            }}
+            floors={property.floors} 
+            priceFrom={property.priceFrom} 
+          />
         </div>
 
         {/* TrustNest SafeStay Guarantee Banner - FULL WIDTH BELOW LAYOUT */}
@@ -194,7 +215,17 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
         {/* Room Availability List & Details - FULL WIDTH */}
         <div className="py-8 border-b border-slate-100 w-full">
-          <RoomAvailability rooms={allRooms} priceFrom={property.priceFrom} />
+          <RoomAvailability 
+            property={{
+              id: property.id,
+              name: property.name,
+              address: property.address,
+              priceFrom: property.priceFrom,
+            }}
+            rooms={allRooms} 
+            floors={property.floors}
+            priceFrom={property.priceFrom} 
+          />
         </div>
 
         {/* Food, Performance, Reviews, and Nearby sections - FULL WIDTH */}
@@ -209,7 +240,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           </div>
 
           {/* Reviews Section */}
-          <ReviewSection reviews={property.reviews} />
+          <ReviewSection propertyId={property.id} reviews={property.reviews} />
 
           {/* Nearby Section */}
           <NearbyServicesSection services={property.services} />

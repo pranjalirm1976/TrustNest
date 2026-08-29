@@ -55,3 +55,93 @@ export async function addOwnerReply(reviewId: string, reply: string) {
     return { success: false, error: error.message || 'Internal server error.' }
   }
 }
+
+export async function submitResidentReview(data: {
+  propertyId: string
+  rating: number
+  foodRating: number
+  amenitiesRating: number
+  cleanlinessRating: number
+  staffRating: number
+  comment: string
+}) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== 'TENANT' && session.user.role !== 'USER')) {
+      return { success: false, error: 'Only verified residents can submit property reviews.' }
+    }
+
+    // Verify tenant has an active stay in this specific property
+    const activeStay = await prisma.residentStay.findFirst({
+      where: {
+        tenantId: session.user.id,
+        status: 'ACTIVE',
+        bed: {
+          room: {
+            floor: {
+              propertyId: data.propertyId
+            }
+          }
+        }
+      }
+    })
+
+    if (!activeStay) {
+      return { 
+        success: false, 
+        error: 'Active stay contract required. Only residents currently staying at this PG can post verified reviews.' 
+      }
+    }
+
+    // Upsert review to avoid multiple duplicates per tenant
+    const review = await prisma.propertyReview.upsert({
+      where: {
+        propertyId_tenantId: {
+          propertyId: data.propertyId,
+          tenantId: session.user.id,
+        }
+      },
+      create: {
+        propertyId: data.propertyId,
+        tenantId: session.user.id,
+        rating: data.rating,
+        foodRating: data.foodRating,
+        amenitiesRating: data.amenitiesRating,
+        cleanlinessRating: data.cleanlinessRating,
+        staffRating: data.staffRating,
+        comment: data.comment,
+        isVerifiedResident: true,
+      },
+      update: {
+        rating: data.rating,
+        foodRating: data.foodRating,
+        amenitiesRating: data.amenitiesRating,
+        cleanlinessRating: data.cleanlinessRating,
+        staffRating: data.staffRating,
+        comment: data.comment,
+        isVerifiedResident: true,
+      }
+    })
+
+    // Recalculate average Trust Score for property
+    const allReviews = await prisma.propertyReview.findMany({
+      where: { propertyId: data.propertyId }
+    })
+    const avgScore = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+    const roundedScore = parseFloat(avgScore.toFixed(1))
+
+    await prisma.property.update({
+      where: { id: data.propertyId },
+      data: { trustScore: roundedScore }
+    })
+
+    revalidatePath(`/pg/${data.propertyId}`)
+    revalidatePath('/search')
+    revalidatePath('/')
+
+    return { success: true, message: 'Review submitted successfully!', review }
+  } catch (error: any) {
+    console.error('submitResidentReview error:', error)
+    return { success: false, error: error.message || 'Failed to submit review.' }
+  }
+}

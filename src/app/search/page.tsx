@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import SearchClient from '@/components/search/SearchClient'
 import { calculatePGAvailability } from '@/lib/availability'
@@ -40,5 +41,9 @@ export default async function SearchPage() {
     }
   })
 
-  return <SearchClient initialProperties={enhancedProperties as any} />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fbfbfb] flex items-center justify-center text-sm font-semibold text-slate-500">Loading verified stays...</div>}>
+      <SearchClient initialProperties={enhancedProperties as any} />
+    </Suspense>
+  )
 }

@@ -74,14 +74,60 @@ export default async function SuperAdminPage() {
     take: 20
   })
 
+  // Fetch 3D room captures
+  const threeDCaptures = await prisma.room3DCapture.findMany({
+    include: {
+      property: { select: { id: true, name: true, address: true, owner: { select: { name: true, email: true } } } },
+      floor: { select: { id: true, name: true, level: true } },
+      room: { select: { id: true, roomNumber: true, sharingType: true, capacity: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  // Fetch all platform payments (Demo bookings and subscriptions)
+  const payments = await prisma.payment.findMany({
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      owner: { select: { id: true, name: true, email: true } },
+      property: { select: { id: true, name: true, address: true } },
+      booking: true,
+      split: true
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100
+  })
+
+  // Fetch all in-app chat threads for moderation
+  const chatThreads = await prisma.chatThread.findMany({
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      owner: { select: { id: true, name: true, email: true } },
+      property: { select: { id: true, name: true, address: true } },
+      messages: {
+        include: {
+          sender: { select: { id: true, name: true, role: true } }
+        },
+        orderBy: { createdAt: 'asc' }
+      }
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 50
+  })
+
+  const totalOwnersCount = await prisma.user.count({ where: { role: 'OWNER' } })
+
   return (
     <SuperAdminDashboardClient
       user={session.user}
       stats={stats}
+      totalOwnersCount={totalOwnersCount}
       properties={properties as any}
       subscriptions={subscriptions as any}
+      payments={payments as any}
+      chatThreads={chatThreads as any}
       complaints={complaints as any}
       reviews={reviews as any}
+      threeDCaptures={threeDCaptures as any}
     />
   )
 }

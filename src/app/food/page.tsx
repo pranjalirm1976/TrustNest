@@ -6,9 +6,17 @@ import { Soup } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-export default async function FoodPage() {
-  // Fetch all food menus ordered by date, including property, images, items, and ratings
+interface FoodPageProps {
+  searchParams: Promise<{ propertyId?: string; pg?: string }>
+}
+
+export default async function FoodPage({ searchParams }: FoodPageProps) {
+  const { propertyId, pg } = await searchParams
+  const filterPropertyId = propertyId || pg
+
+  // Fetch food menus ordered by date, optionally filtered by property
   const foodMenus = await prisma.foodMenu.findMany({
+    where: filterPropertyId ? { propertyId: filterPropertyId } : undefined,
     include: {
       property: true,
       images: true,

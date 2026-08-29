@@ -27,10 +27,13 @@ import {
   Sparkles, 
   ArrowRight,
   ChevronRight,
-  ShieldCheck,
   CheckCircle,
-  IndianRupee
+  IndianRupee,
+  Box,
+  Camera,
+  Video
 } from 'lucide-react'
+import Room3DCaptureWizard from '@/components/admin/room-3d/Room3DCaptureWizard'
 
 const steps = [
   { id: 1, name: 'Basic Info' },
@@ -158,6 +161,9 @@ export default function PGRegistrationClient() {
       ]
     }
   ])
+
+  const [active3DRoom, setActive3DRoom] = useState<any | null>(null)
+  const [configured3DRooms, setConfigured3DRooms] = useState<Record<string, boolean>>({})
 
   // Photo handlers
   const handlePhotoUpload = (key: string, file: File) => {
@@ -348,14 +354,14 @@ export default function PGRegistrationClient() {
       setIsSubmitting(false)
 
       if (res.success) {
-        router.push('/admin/verification')
+        router.push('/admin/subscription')
       } else {
         alert(res.error || 'Failed to complete registration')
       }
     } catch (err: any) {
       console.error('Registration error:', err)
       setIsSubmitting(false)
-      router.push('/admin/verification')
+      router.push('/admin/subscription')
     }
   }
 
@@ -816,6 +822,26 @@ export default function PGRegistrationClient() {
                               ))}
                             </div>
                           </div>
+
+                          {/* 3D View Studio Capture Trigger */}
+                          <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => setActive3DRoom(room)}
+                              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                                configured3DRooms[room.id]
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
+                              }`}
+                            >
+                              <Box className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>{configured3DRooms[room.id] ? '✓ 3D View Attached (Edit)' : '+ Create 3D View (Photos/Video)'}</span>
+                            </button>
+
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {configured3DRooms[room.id] ? '3D Model Ready' : 'AI Photogrammetry'}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -918,6 +944,31 @@ export default function PGRegistrationClient() {
         </div>
 
       </div>
+
+      {/* 3D Room View Capture Studio Modal */}
+      {active3DRoom && (
+        <Room3DCaptureWizard
+          room={{
+            id: active3DRoom.id,
+            roomNumber: active3DRoom.roomNumber,
+            sharingType: `${active3DRoom.capacity} Sharing`,
+            capacity: active3DRoom.capacity,
+            hasWashroom: active3DRoom.hasWashroom
+          }}
+          allRooms={rooms.map(r => ({
+            id: r.id,
+            roomNumber: r.roomNumber,
+            capacity: r.capacity,
+            sharingType: `${r.capacity} Sharing`
+          }))}
+          onClose={() => setActive3DRoom(null)}
+          onSuccess={() => {
+            setConfigured3DRooms(prev => ({ ...prev, [active3DRoom.id]: true }))
+            setActive3DRoom(null)
+          }}
+        />
+      )}
+
     </div>
   )
 }

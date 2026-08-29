@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { verifyProperty, suspendProperty, restoreProperty, moderateReview } from '@/actions/super-admin.actions'
+import { superAdminReview3DModel } from '@/actions/3d-capture.actions'
 import { 
   Building2, 
   Users, 
@@ -28,32 +29,56 @@ import {
   SlidersHorizontal,
   ExternalLink,
   MessageSquare,
-  Activity
+  Activity,
+  Box,
+  Camera,
+  Video,
+  CheckCircle2
 } from 'lucide-react'
+import Real3DViewer from '@/components/3d/Real3DViewer'
 
 interface SuperAdminDashboardClientProps {
   user: { name?: string | null; email?: string | null }
   stats: any
+  totalOwnersCount?: number
   properties: any[]
   subscriptions: any[]
+  payments?: any[]
+  chatThreads?: any[]
   complaints: any[]
   reviews: any[]
+  threeDCaptures?: any[]
 }
 
 export default function SuperAdminDashboardClient({
   user,
   stats,
+  totalOwnersCount = 3,
   properties: initialProperties,
-  subscriptions,
+  subscriptions: initialSubscriptions,
+  payments: initialPayments = [],
+  chatThreads: initialChatThreads = [],
   complaints,
-  reviews: initialReviews
+  reviews: initialReviews,
+  threeDCaptures: initialThreeDCaptures = []
 }: SuperAdminDashboardClientProps) {
   const [properties, setProperties] = useState(initialProperties)
   const [reviews, setReviews] = useState(initialReviews)
-  const [activeTab, setActiveTab] = useState<'overview' | 'queue' | 'subscriptions' | 'complaints' | 'reviews'>('overview')
+  const [threeDCaptures, setThreeDCaptures] = useState(initialThreeDCaptures)
+  const [subscriptions, setSubscriptions] = useState(initialSubscriptions)
+  const [payments, setPayments] = useState(initialPayments)
+  const [chatThreads, setChatThreads] = useState(initialChatThreads)
+  const [activeTab, setActiveTab] = useState<'overview' | 'queue' | 'threeD' | 'subscriptions' | 'complaints' | 'reviews' | 'chats'>('overview')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [subFilter, setSubFilter] = useState('ALL')
+  const [subSearch, setSubSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isActing, setIsActing] = useState<string | null>(null)
+  
+  // 3D Review Modal State
+  const [previewCapture, setPreviewCapture] = useState<any | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<{ captureId: string; type: 'REJECT' | 'RECAPTURE' } | null>(null)
+  const [feedbackReason, setFeedbackReason] = useState('')
 
   // Property Verification Handler
   const handleVerify = async (propertyId: string, status: 'PUBLISHED' | 'REJECTED' | 'SUSPENDED') => {
@@ -80,6 +105,26 @@ export default function SuperAdminDashboardClient({
       }
     } catch (e: any) {
       alert(e.message)
+    }
+  }
+
+  // 3D Review Action Handler
+  const handleReview3D = async (captureId: string, decision: 'APPROVE' | 'REJECT' | 'RECAPTURE', reason?: string) => {
+    setIsActing(captureId)
+    try {
+      const res = await superAdminReview3DModel(captureId, decision, reason)
+      if (res.success) {
+        const newStatus = decision === 'APPROVE' ? 'PUBLISHED' : decision === 'RECAPTURE' ? 'NEEDS_RECAPTURE' : 'REJECTED'
+        setThreeDCaptures(prev => prev.map(c => c.id === captureId ? { ...c, status: newStatus, adminApproved: decision === 'APPROVE' } : c))
+        setFeedbackModal(null)
+        setFeedbackReason('')
+      } else {
+        alert(res.error)
+      }
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setIsActing(null)
     }
   }
 
@@ -133,7 +178,9 @@ export default function SuperAdminDashboardClient({
           {[
             { id: 'overview', label: 'Platform Overview', count: null },
             { id: 'queue', label: 'PG Verification Queue', count: properties.filter(p => p.status !== 'PUBLISHED').length },
-            { id: 'subscriptions', label: 'Owner Subscriptions (₹2,000/mo)', count: stats.subscriptions.active },
+            { id: 'threeD', label: '3D Room Models', count: threeDCaptures.filter(c => c.status === 'PENDING_ADMIN_REVIEW' || c.status === 'READY_FOR_OWNER_REVIEW').length },
+            { id: 'subscriptions', label: 'Payments & Subscriptions (DEMO)', count: subscriptions.filter(s => s.status === 'ACTIVE').length },
+            { id: 'chats', label: 'In-App Chats Moderation', count: chatThreads.length },
             { id: 'complaints', label: 'Global 24h SLA Complaints', count: stats.complaints.open },
             { id: 'reviews', label: 'Reviews Moderation', count: reviews.length },
           ].map(tab => (
@@ -498,71 +545,580 @@ export default function SuperAdminDashboardClient({
           </div>
         )}
 
-        {/* TAB 3: Owner Subscriptions */}
-        {activeTab === 'subscriptions' && (
+        {/* TAB: 3D Room Models Verification & Moderation */}
+        {activeTab === 'threeD' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest font-mono">Platform Monetization</span>
-                <h3 className="text-base font-extrabold text-slate-900 mt-0.5">TrustNest Owner Subscriptions (₹2,000 / month / PG)</h3>
-                <p className="text-xs text-slate-600 mt-1 max-w-xl">
-                  PG Owners pay TrustNest a fixed monthly subscription for property listing and operational software. TrustNest takes 0% commission from tenant rent.
+                <h2 className="text-lg font-bold text-slate-900">3D Room Models Verification Queue</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Audit AI-reconstructed 3D room views submitted by PG Owners before publishing them to prospective residents.
                 </p>
               </div>
 
-              <div className="bg-white border border-indigo-200 rounded-xl p-4 text-center shrink-0 shadow-sm">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Month Revenue</span>
-                <p className="text-2xl font-black text-indigo-700 font-mono">₹{stats.subscriptions.monthlyRevenue.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-emerald-700 font-bold mt-0.5">{stats.subscriptions.paidThisMonth} Subscriptions Paid</p>
+              <div className="flex items-center gap-3">
+                <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Review</span>
+                  <span className="text-lg font-black text-amber-600 font-mono">
+                    {threeDCaptures.filter(c => c.status === 'PENDING_ADMIN_REVIEW' || c.status === 'READY_FOR_OWNER_REVIEW').length}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-center shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Live 3D Views</span>
+                  <span className="text-lg font-black text-emerald-600 font-mono">
+                    {threeDCaptures.filter(c => c.status === 'PUBLISHED').length}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            {threeDCaptures.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+                <Box className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-slate-800">No 3D Models in Verification Queue</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  When PG Owners submit Photo sets or Video walkarounds for room reconstruction, they will appear here for 3D quality audit and publishing approval.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-mono uppercase text-[10px]">
+                      <tr>
+                        <th className="p-4">Property &amp; Room</th>
+                        <th className="p-4">Owner</th>
+                        <th className="p-4">Capture Method</th>
+                        <th className="p-4">Quality &amp; Coverage</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {threeDCaptures.map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="p-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
+                                <Box className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-900 block">{c.property?.name || 'Property'}</span>
+                                <span className="text-[11px] text-slate-500">
+                                  Room {c.room?.roomNumber} ({c.room?.sharingType || 'Double Sharing'}) • Floor {c.floor?.level ?? 1}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="p-4">
+                            <span className="font-bold text-slate-800">{c.property?.owner?.name || 'PG Owner'}</span>
+                            <p className="text-[11px] text-slate-400">{c.property?.owner?.email}</p>
+                          </td>
+
+                          <td className="p-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]">
+                              {c.captureMethod === 'PHOTO' ? <Camera className="w-3.5 h-3.5 text-indigo-600" /> : <Video className="w-3.5 h-3.5 text-indigo-600" />}
+                              <span>{c.captureMethod === 'PHOTO' ? 'Guided Photos' : '360° Video'}</span>
+                            </span>
+                          </td>
+
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-500 font-bold">★ {(c.mediaQualityScore || 4.8).toFixed(1)}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-emerald-700 font-mono font-bold">{c.mediaCoverageScore || 92}% Coverage</span>
+                            </div>
+                          </td>
+
+                          <td className="p-4">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                              c.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              c.status === 'PENDING_ADMIN_REVIEW' ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse' :
+                              c.status === 'NEEDS_RECAPTURE' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                              c.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                              {c.status === 'PENDING_ADMIN_REVIEW' ? 'Pending Super Admin Review' : c.status}
+                            </span>
+                            {c.adminRejectionReason && (
+                              <p className="text-[10px] text-red-600 mt-1 italic max-w-xs">&quot;{c.adminRejectionReason}&quot;</p>
+                            )}
+                          </td>
+
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setPreviewCapture(c)}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview 3D</span>
+                              </button>
+
+                              {c.status !== 'PUBLISHED' && (
+                                <button
+                                  onClick={() => handleReview3D(c.id, 'APPROVE')}
+                                  disabled={isActing === c.id}
+                                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Approve &amp; Publish</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => setFeedbackModal({ captureId: c.id, type: 'RECAPTURE' })}
+                                disabled={isActing === c.id}
+                                className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                              >
+                                Request Recapture
+                              </button>
+
+                              <button
+                                onClick={() => setFeedbackModal({ captureId: c.id, type: 'REJECT' })}
+                                disabled={isActing === c.id}
+                                className="px-2 py-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Reject Model"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Interactive 3D Model Review Modal */}
+            {previewCapture && (
+              <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                  <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                    <div className="flex items-center gap-2.5">
+                      <Box className="w-5 h-5 text-indigo-600" />
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-900">
+                          3D Spatial Preview — Room {previewCapture.room?.roomNumber} ({previewCapture.property?.name})
+                        </h3>
+                        <p className="text-[11px] text-slate-500">Method: {previewCapture.captureMethod} • Score: ★ {(previewCapture.mediaQualityScore || 4.8).toFixed(1)}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setPreviewCapture(null)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Real WebGL 3D Viewer */}
+                  <div className="p-4 bg-slate-950">
+                    <Real3DViewer
+                      modelUrl={previewCapture.processedModelUrl}
+                      roomNumber={previewCapture.room?.roomNumber}
+                      sharingType={previewCapture.room?.sharingType || 'Double Sharing'}
+                      qualityScore={previewCapture.mediaQualityScore || 4.8}
+                      coverageScore={previewCapture.mediaCoverageScore || 95}
+                    />
+                  </div>
+
+                  <div className="p-5 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+                    <div className="text-xs text-slate-500">
+                      Status: <strong className="text-slate-800 font-mono uppercase">{previewCapture.status}</strong>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          handleReview3D(previewCapture.id, 'APPROVE')
+                          setPreviewCapture(null)
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve &amp; Publish Model</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Feedback / Rejection Modal */}
+            {feedbackModal && (
+              <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      {feedbackModal.type === 'RECAPTURE' ? 'Request 3D Re-capture from Owner' : 'Reject 3D Model'}
+                    </h3>
+                    <button onClick={() => setFeedbackModal(null)} className="p-1 text-slate-400 hover:text-slate-700">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Provide clear feedback to the PG Owner explaining what additional coverage or lighting improvements are required.
+                  </p>
+
+                  <textarea
+                    rows={3}
+                    value={feedbackReason}
+                    onChange={(e) => setFeedbackReason(e.target.value)}
+                    placeholder="e.g. Room coverage is incomplete. Please capture the attached bathroom and window area with higher lighting."
+                    className="w-full p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      onClick={() => setFeedbackModal(null)}
+                      className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleReview3D(feedbackModal.captureId, feedbackModal.type, feedbackReason)}
+                      disabled={isActing === feedbackModal.captureId || !feedbackReason.trim()}
+                      className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-sm cursor-pointer ${
+                        feedbackModal.type === 'RECAPTURE' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'
+                      }`}
+                    >
+                      Submit Feedback to Owner
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* TAB: Payments & Subscriptions Control Center */}
+        {activeTab === 'subscriptions' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* Top Sandbox Notice */}
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 shrink-0 font-bold text-sm font-mono">
+                  DEMO
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                    SUPER ADMIN PAYMENT &amp; SUBSCRIPTION CONTROL (DEMO MODE)
+                  </h4>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Viewing real-time sandbox subscription billings and user booking split transactions. Cashfree integration ready.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-extrabold uppercase px-2.5 py-1 rounded bg-amber-200/80 text-amber-900 shrink-0">
+                Payment Gateway: Demo Rails
+              </span>
+            </div>
+
+            {/* 6 Metric KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total PG Owners</span>
+                <p className="text-2xl font-black text-slate-900 mt-1 font-mono">{totalOwnersCount}</p>
+                <span className="text-[10px] text-slate-500 font-medium">Registered Partners</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Subscriptions</span>
+                <p className="text-2xl font-black text-emerald-600 mt-1 font-mono">
+                  {subscriptions.filter(s => s.status === 'ACTIVE').length}
+                </p>
+                <span className="text-[10px] text-emerald-600 font-bold">₹2,000 / mo per PG</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Payments</span>
+                <p className="text-2xl font-black text-amber-600 mt-1 font-mono">
+                  {subscriptions.filter(s => s.status === 'PENDING').length + payments.filter(p => p.status === 'PENDING').length}
+                </p>
+                <span className="text-[10px] text-amber-600 font-bold">Awaiting Action</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Failed Payments</span>
+                <p className="text-2xl font-black text-red-600 mt-1 font-mono">
+                  {subscriptions.filter(s => s.status === 'FAILED').length + payments.filter(p => p.status === 'FAILED').length}
+                </p>
+                <span className="text-[10px] text-red-600 font-bold">Simulated / Declined</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Monthly MRR (DEMO)</span>
+                <p className="text-2xl font-black text-indigo-700 mt-1 font-mono">
+                  ₹{(subscriptions.filter(s => s.status === 'ACTIVE').length * 2000).toLocaleString('en-IN')}
+                </p>
+                <span className="text-[10px] text-indigo-600 font-bold">Fixed Partner Revenue</span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Demo Txns</span>
+                <p className="text-2xl font-black text-slate-900 mt-1 font-mono">
+                  {payments.length + subscriptions.length}
+                </p>
+                <span className="text-[10px] text-slate-500 font-medium">Audit Logged</span>
+              </div>
+            </div>
+
+            {/* Filter & Search Toolbar */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Filter:</span>
+                {['ALL', 'ACTIVE', 'PENDING', 'FAILED', 'EXPIRED'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setSubFilter(f)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      subFilter === f
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search by owner, PG, or txn..."
+                  value={subSearch}
+                  onChange={(e) => setSubSearch(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600"
+                />
+              </div>
+            </div>
+
+            {/* Table 1: PG Owner Subscriptions */}
+            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                    PG Owner Subscriptions (₹2,000 / month)
+                  </h3>
+                  <p className="text-xs text-slate-500">Live platform SaaS billing for registered PG owners.</p>
+                </div>
+                <span className="text-xs font-bold text-slate-500">
+                  {subscriptions.length} Subscriptions Found
+                </span>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-mono uppercase text-[10px]">
                     <tr>
                       <th className="p-4">Owner</th>
-                      <th className="p-4">Plan Name</th>
+                      <th className="p-4">PG Property</th>
+                      <th className="p-4">Plan</th>
                       <th className="p-4">Amount</th>
-                      <th className="p-4">Billing Cycle</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4">Next Renewal</th>
+                      <th className="p-4">Payment Status</th>
+                      <th className="p-4">Transaction ID</th>
+                      <th className="p-4">Payment Date</th>
+                      <th className="p-4">Next Billing Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {subscriptions.map(sub => (
-                      <tr key={sub.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="p-4">
-                          <span className="font-bold text-slate-900">{sub.owner?.name || 'PG Owner'}</span>
-                          <p className="text-[11px] text-slate-400">{sub.owner?.email}</p>
-                        </td>
+                    {subscriptions
+                      .filter(sub => {
+                        const matchFilter = subFilter === 'ALL' || sub.status === subFilter
+                        const matchSearch = !subSearch || 
+                          sub.owner?.name?.toLowerCase().includes(subSearch.toLowerCase()) ||
+                          sub.owner?.email?.toLowerCase().includes(subSearch.toLowerCase()) ||
+                          sub.property?.name?.toLowerCase().includes(subSearch.toLowerCase()) ||
+                          sub.transactionId?.toLowerCase().includes(subSearch.toLowerCase())
+                        return matchFilter && matchSearch
+                      })
+                      .map(sub => (
+                        <tr key={sub.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="p-4">
+                            <span className="font-bold text-slate-900">{sub.owner?.name || 'PG Owner'}</span>
+                            <p className="text-[11px] text-slate-400">{sub.owner?.email}</p>
+                          </td>
 
-                        <td className="p-4 text-slate-700 font-semibold">{sub.planName}</td>
+                          <td className="p-4">
+                            <span className="font-bold text-slate-800">{sub.property?.name || 'Assigned PG'}</span>
+                            <p className="text-[10px] text-slate-400 truncate max-w-[160px]">{sub.property?.address || '-'}</p>
+                          </td>
 
-                        <td className="p-4 font-mono font-bold text-slate-900">₹{sub.amount.toLocaleString('en-IN')}/mo</td>
+                          <td className="p-4 text-slate-700 font-semibold">{sub.planName}</td>
 
-                        <td className="p-4 text-slate-600">{sub.billingCycle}</td>
+                          <td className="p-4 font-mono font-bold text-slate-900">₹{sub.amount.toLocaleString('en-IN')}</td>
 
-                        <td className="p-4">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-                            sub.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            sub.status === 'PAST_DUE' ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {sub.status === 'ACTIVE' ? 'Paid / Active' : sub.status}
-                          </span>
-                        </td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                              sub.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              sub.status === 'FAILED' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {sub.status === 'ACTIVE' ? 'Active / Paid' : sub.status}
+                            </span>
+                          </td>
 
-                        <td className="p-4 text-slate-500 font-mono text-[11px]">
-                          {new Date(sub.currentPeriodEnd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="p-4 font-mono text-[11px] text-indigo-600 font-bold">
+                            {sub.transactionId || 'TNEST_DEMO_PENDING'}
+                          </td>
+
+                          <td className="p-4 text-slate-500">
+                            {sub.startDate ? new Date(sub.startDate).toLocaleDateString('en-IN') : new Date(sub.createdAt).toLocaleDateString('en-IN')}
+                          </td>
+
+                          <td className="p-4 text-slate-500 font-mono text-[11px]">
+                            {sub.nextBillingDate ? new Date(sub.nextBillingDate).toLocaleDateString('en-IN') : '-'}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            {/* Table 2: User Booking Payments & Platform Splits */}
+            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                    Demo Booking Transactions &amp; Split Settlement Log
+                  </h3>
+                  <p className="text-xs text-slate-500">Audit log of 10% platform commission and 90% owner payouts.</p>
+                </div>
+                <span className="text-xs font-bold text-slate-500">
+                  {payments.filter(p => p.type === 'BOOKING').length} Bookings Recorded
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-mono uppercase text-[10px]">
+                    <tr>
+                      <th className="p-4">Txn ID</th>
+                      <th className="p-4">Resident</th>
+                      <th className="p-4">PG Property</th>
+                      <th className="p-4">Owner</th>
+                      <th className="p-4">Booking Amount</th>
+                      <th className="p-4">TrustNest Commission (10%)</th>
+                      <th className="p-4">Owner Payout (90%)</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {payments
+                      .filter(p => p.type === 'BOOKING')
+                      .map(p => {
+                        const commission = p.split?.trustNestAmount ?? Math.round(p.amount * 0.10)
+                        const ownerShare = p.split?.ownerAmount ?? (p.amount - commission)
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="p-4 font-mono text-[11px] font-bold text-slate-900">
+                              {p.transactionId}
+                            </td>
+
+                            <td className="p-4 font-bold text-slate-800">
+                              {p.user?.name || 'Resident User'}
+                              <p className="text-[10px] text-slate-400 font-normal">{p.user?.email}</p>
+                            </td>
+
+                            <td className="p-4 font-bold text-slate-800">
+                              {p.property?.name || 'PG Stay'}
+                            </td>
+
+                            <td className="p-4 text-slate-700 font-semibold">
+                              {p.owner?.name || 'PG Owner'}
+                            </td>
+
+                            <td className="p-4 font-mono font-bold text-slate-900">
+                              ₹{p.amount.toLocaleString('en-IN')}
+                            </td>
+
+                            <td className="p-4 font-mono font-bold text-indigo-600">
+                              ₹{commission.toLocaleString('en-IN')}
+                            </td>
+
+                            <td className="p-4 font-mono font-bold text-emerald-700">
+                              ₹{ownerShare.toLocaleString('en-IN')}
+                            </td>
+
+                            <td className="p-4">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                                p.status === 'PAID' || p.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                p.status === 'FAILED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}>
+                                {p.status}
+                              </span>
+                            </td>
+
+                            <td className="p-4 text-slate-500">
+                              {new Date(p.createdAt).toLocaleDateString('en-IN')}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB: In-App User ↔ PG Owner Chats Moderation */}
+        {activeTab === 'chats' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">In-App Chat Communication &amp; Privacy Moderation</h2>
+              <p className="text-xs text-slate-500">
+                All resident inquiries and owner chats take place securely within TrustNest. Personal WhatsApp numbers are shielded.
+              </p>
+            </div>
+
+            {chatThreads.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+                <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-slate-800">No In-App Chat Threads Yet</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  When prospective residents or verified tenants click &quot;Chat with Owner&quot;, their private conversations will appear here for Super Admin platform moderation.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {chatThreads.map(thread => (
+                  <div key={thread.id} className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="font-extrabold text-sm text-slate-900">{thread.property?.name}</span>
+                        <p className="text-xs text-slate-500">
+                          {thread.user?.name} (Resident) ↔ {thread.owner?.name} (Owner)
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                        {thread.messages?.length || 0} msgs
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl text-xs">
+                      {thread.messages?.map((msg: any) => (
+                        <div key={msg.id} className="p-2 bg-white rounded-lg border border-slate-200/60 shadow-2xs">
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-0.5">
+                            <span>{msg.sender?.name} ({msg.sender?.role})</span>
+                            <span>{new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-slate-800">{msg.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -20,6 +20,10 @@ export default async function AdminDashboard() {
     redirect('/admin/login')
   }
 
+  if (session.user.role === 'SUPER_ADMIN') {
+    redirect('/super-admin')
+  }
+
   if (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR') {
     redirect('/unauthorized')
   }

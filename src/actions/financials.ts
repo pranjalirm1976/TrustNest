@@ -30,7 +30,7 @@ export async function updatePaymentStatus(paymentId: string, status: string, met
     })
 
     if (payment) {
-      if (payment.booking.property.ownerId !== session.user.id && session.user.role !== 'INSPECTOR') {
+      if (payment.booking?.property?.ownerId && payment.booking.property.ownerId !== session.user.id && session.user.role !== 'INSPECTOR') {
         return { success: false, error: 'Unauthorized for this property.' }
       }
 

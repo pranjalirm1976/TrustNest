@@ -15,8 +15,11 @@ import {
   Wifi,
   Wind,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Box,
+  Sparkles
 } from 'lucide-react'
+import Room3DCaptureWizard from '@/components/admin/room-3d/Room3DCaptureWizard'
 
 // --- Mock Data ---
 type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE'
@@ -83,13 +86,20 @@ const mockRooms: Room[] = [
   }
 ]
 
-export default function RoomsClient() {
+interface RoomsClientProps {
+  initialRoomsData?: any[]
+  propertyId?: string
+}
+
+export default function RoomsClient({ initialRoomsData, propertyId }: RoomsClientProps) {
+  const roomsList = initialRoomsData && initialRoomsData.length > 0 ? initialRoomsData : mockRooms
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(mockRooms[0].id)
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(roomsList[0]?.id || null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeBedDropdown, setActiveBedDropdown] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ text: string, type: 'success'|'error' } | null>(null)
+  const [show3DWizard, setShow3DWizard] = useState(false)
 
   // Handlers
   const handleUpdateStatus = async (bedId: string, newStatus: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE') => {
@@ -100,9 +110,9 @@ export default function RoomsClient() {
       if (res.success) {
         setToastMessage({ text: 'Bed status updated in database successfully!', type: 'success' })
         // Optimistically update mock UI so user sees the change
-        const room = mockRooms.find(r => r.id === selectedRoomId)
+        const room = roomsList.find((r: any) => r.id === selectedRoomId)
         if (room) {
-          const bed = room.beds.find(b => b.id === bedId)
+          const bed = room.beds.find((b: any) => b.id === bedId)
           if (bed) bed.status = newStatus
         }
       } else {
@@ -129,14 +139,20 @@ export default function RoomsClient() {
   }
 
   // Filtered Rooms
-  const filteredRooms = mockRooms.filter(room => {
+  const filteredRooms = roomsList.filter(room => {
     const matchesSearch = room.number.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTemplate = selectedTemplateId ? room.templateId === selectedTemplateId : true
     return matchesSearch && matchesTemplate
   })
 
-  const selectedRoom = mockRooms.find(r => r.id === selectedRoomId)
-  const selectedRoomTemplate = mockTemplates.find(t => t.id === selectedRoom?.templateId)
+  const selectedRoom = roomsList.find(r => r.id === selectedRoomId) || roomsList[0]
+  const selectedRoomTemplate = mockTemplates.find(t => t.id === selectedRoom?.templateId) || {
+    id: 'custom',
+    name: selectedRoom?.sharingType || `${selectedRoom?.capacity || 2} Sharing`,
+    sharing: selectedRoom?.capacity || 2,
+    baseRent: selectedRoom?.pricePerBed || 8500,
+    amenities: ['Attached Washroom', 'High Speed Wi-Fi']
+  }
 
   // Status Colors Mapping
   const statusColors: Record<BedStatus, string> = {
@@ -172,20 +188,20 @@ export default function RoomsClient() {
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className={`w-3.5 h-3.5 rounded-full ${
-            mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'AVAILABLE').length, 0) === 0 ? 'bg-red-500 ring-4 ring-red-100' :
-            (mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / mockRooms.reduce((acc, r) => acc + r.beds.length, 0)) >= 0.75 ? 'bg-amber-500 ring-4 ring-amber-100' :
+            roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'AVAILABLE').length, 0) === 0 ? 'bg-red-500 ring-4 ring-red-100' :
+            (roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / Math.max(1, roomsList.reduce((acc: number, r: any) => acc + r.beds.length, 0))) >= 0.75 ? 'bg-amber-500 ring-4 ring-amber-100' :
             'bg-emerald-500 ring-4 ring-emerald-100'
           }`} />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">PG Status:</span>
               <span className={`text-xs font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
-                mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'AVAILABLE').length, 0) === 0 ? 'bg-red-50 text-red-700 border border-red-200' :
-                (mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / mockRooms.reduce((acc, r) => acc + r.beds.length, 0)) >= 0.75 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'AVAILABLE').length, 0) === 0 ? 'bg-red-50 text-red-700 border border-red-200' :
+                (roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / Math.max(1, roomsList.reduce((acc: number, r: any) => acc + r.beds.length, 0))) >= 0.75 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}>
-                {mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'AVAILABLE').length, 0) === 0 ? '🔴 Full' :
-                 (mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / mockRooms.reduce((acc, r) => acc + r.beds.length, 0)) >= 0.75 ? '🟡 Limited Availability' :
+                {roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'AVAILABLE').length, 0) === 0 ? '🔴 Full' :
+                 (roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / Math.max(1, roomsList.reduce((acc: number, r: any) => acc + r.beds.length, 0))) >= 0.75 ? '🟡 Limited Availability' :
                  '🟢 Available'}
               </span>
             </div>
@@ -195,20 +211,20 @@ export default function RoomsClient() {
         <div className="flex items-center gap-6 text-xs">
           <div>
             <span className="text-slate-400 font-medium">Total Beds:</span>
-            <span className="font-bold text-slate-800 ml-1.5">{mockRooms.reduce((acc, r) => acc + r.beds.length, 0)}</span>
+            <span className="font-bold text-slate-800 ml-1.5">{roomsList.reduce((acc: number, r: any) => acc + r.beds.length, 0)}</span>
           </div>
           <div>
             <span className="text-slate-400 font-medium">Occupied:</span>
-            <span className="font-bold text-red-600 ml-1.5">{mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0)}</span>
+            <span className="font-bold text-red-600 ml-1.5">{roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0)}</span>
           </div>
           <div>
             <span className="text-slate-400 font-medium">Available:</span>
-            <span className="font-bold text-emerald-600 ml-1.5">{mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'AVAILABLE').length, 0)}</span>
+            <span className="font-bold text-emerald-600 ml-1.5">{roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'AVAILABLE').length, 0)}</span>
           </div>
           <div>
             <span className="text-slate-400 font-medium">Occupancy:</span>
             <span className="font-bold text-indigo-600 ml-1.5">
-              {Math.round((mockRooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / mockRooms.reduce((acc, r) => acc + r.beds.length, 0)) * 100)}%
+              {Math.round((roomsList.reduce((acc: number, r: any) => acc + r.beds.filter((b: any) => b.status === 'OCCUPIED' || b.status === 'RESERVED').length, 0) / Math.max(1, roomsList.reduce((acc: number, r: any) => acc + r.beds.length, 0))) * 100)}%
             </span>
           </div>
         </div>
@@ -276,7 +292,7 @@ export default function RoomsClient() {
                 filteredRooms.map(room => {
                   const template = mockTemplates.find(t => t.id === room.templateId)
                   const isSelected = selectedRoomId === room.id
-                  const availableBeds = room.beds.filter(b => b.status === 'AVAILABLE').length
+                  const availableBeds = room.beds.filter((b: any) => b.status === 'AVAILABLE').length
 
                   return (
                     <button
@@ -335,6 +351,13 @@ export default function RoomsClient() {
                 </div>
 
                 <div className="flex items-start gap-2 shrink-0">
+                  <button 
+                    onClick={() => setShow3DWizard(true)}
+                    className="text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 px-3.5 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Box className="w-4 h-4 text-indigo-600" />
+                    <span>3D Capture Studio</span>
+                  </button>
                   <button className="text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2">
                     <ImageIcon className="w-4 h-4" />
                     <span className="hidden sm:inline">Images</span>
@@ -355,10 +378,10 @@ export default function RoomsClient() {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  {selectedRoom.beds.map(bed => (
+                  {selectedRoom.beds.map((bed: any) => (
                     <div 
                       key={bed.id} 
-                      className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between border-l-4 ${statusColors[bed.status]}`}
+                      className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between border-l-4 ${statusColors[bed.status as BedStatus] || 'border-l-slate-400'}`}
                     >
                       <div className="flex justify-between items-start mb-4 relative">
                         <div className="flex items-center gap-3">
@@ -366,7 +389,7 @@ export default function RoomsClient() {
                             {bed.identifier}
                           </div>
                           <div>
-                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${statusBadgeColors[bed.status]}`}>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${statusBadgeColors[bed.status as BedStatus] || 'bg-slate-50 text-slate-700'}`}>
                               {bed.status}
                             </span>
                           </div>
@@ -457,6 +480,30 @@ export default function RoomsClient() {
           )}
         </div>
       </div>
+
+      {/* 3D Room View Capture Studio Modal */}
+      {show3DWizard && selectedRoom && (
+        <Room3DCaptureWizard
+          room={{
+            id: selectedRoom.id,
+            roomNumber: selectedRoom.number,
+            sharingType: selectedRoomTemplate?.name || 'Double Sharing',
+            capacity: selectedRoom.beds.length,
+            hasWashroom: true
+          }}
+          allRooms={roomsList.map((r: any) => ({
+            id: r.id,
+            roomNumber: r.number,
+            capacity: r.beds.length,
+            sharingType: 'Sharing'
+          }))}
+          onClose={() => setShow3DWizard(false)}
+          onSuccess={() => {
+            setToastMessage({ text: '3D Room Model submitted for Super Admin review!', type: 'success' })
+          }}
+        />
+      )}
+
     </div>
   )
 }

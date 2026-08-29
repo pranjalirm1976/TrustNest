@@ -103,11 +103,7 @@ export default async function TenantDashboardPage() {
           <StaySummaryCard stay={formattedStay} />
 
           {/* Quick Actions Grid */}
-          <QuickActionsGrid
-            onPayRent={() => alert('Redirecting to Payment screen...')}
-            onRaiseComplaint={() => alert('Opening Raise Complaint overlay...')}
-            onRateFood={() => alert('Redirecting to Daily Meal rating feed...')}
-          />
+          <QuickActionsGrid />
         </div>
 
         {/* Right Side: Billing and Active tickets (4 columns) */}

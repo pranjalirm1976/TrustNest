@@ -146,16 +146,46 @@ export default function TenantLoginForm() {
             )}
           </button>
 
+          {/* Quick 1-Click Resident Login */}
+          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">1-Click Demo Login</span>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={async () => {
+                setEmail('priya.sharma@gmail.com')
+                setPassword('password123')
+                setIsLoading(true)
+                try {
+                  const res = await signIn('credentials', {
+                    email: 'priya.sharma@gmail.com',
+                    password: 'password123',
+                    redirect: false,
+                  })
+                  if (res?.ok) {
+                    router.push('/tenant/dashboard')
+                    router.refresh()
+                  }
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              className="w-full py-2.5 px-3 bg-indigo-50/70 hover:bg-indigo-100/70 text-brand-primary border border-indigo-100 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+            >
+              <span>👤 Quick Sign In (Priya Sharma)</span>
+              <span className="text-[10px] text-indigo-400">Auto-fill &rarr;</span>
+            </button>
+          </div>
+
           {/* Prompt info */}
-          <div className="text-center text-[10px] text-slate-400 leading-normal mt-2">
-            Forgot password? Contact your landlord to trigger a reset link. New resident?{' '}
-            <button 
-              type="button" 
-              onClick={() => router.push('/tenant/login?signup=true')}
+          <div className="text-center text-[10px] text-slate-400 leading-normal mt-1">
+            Looking for Admin or Super Admin?{' '}
+            <a 
+              href="/admin/login"
               className="text-brand-primary font-bold hover:underline cursor-pointer"
             >
-              Get Access Key
-            </button>
+              Admin / Super Admin Portal &rarr;
+            </a>
           </div>
         </form>
       )}

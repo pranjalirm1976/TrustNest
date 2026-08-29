@@ -15,7 +15,7 @@ model User {
   name         String
   email        String         @unique
   passwordHash String
-  role         String         @default("TENANT") // "TENANT" | "OWNER" | "INSPECTOR"
+  role         String         @default("TENANT") // "TENANT" | "OWNER" | "SUPER_ADMIN" | "INSPECTOR"
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   
@@ -30,6 +30,11 @@ model User {
   notifications Notification[]
   subscriptions OwnerSubscription[]
   payoutAccount OwnerPayoutAccount?
+  payments     Payment[]      @relation("UserPayments")
+  receivedPayments Payment[]  @relation("OwnerReceivedPayments")
+  chatThreadsAsUser ChatThread[] @relation("UserChatThreads")
+  chatThreadsAsOwner ChatThread[] @relation("OwnerChatThreads")
+  chatMessages ChatMessage[]  @relation("UserChatMessages")
   
   @@map("users")
 }
@@ -62,6 +67,10 @@ model Property {
   services    NearbyService[]
   bookings    Booking[]
   trustScoreLogs TrustScoreLog[]
+  threeDCaptures Room3DCapture[]
+  subscriptions OwnerSubscription[]
+  payments      Payment[]
+  chatThreads   ChatThread[]
   
   @@map("properties")
 }
@@ -93,6 +102,7 @@ model Floor {
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   rooms      Room[]
   facilities FloorFacility[]
+  threeDCaptures Room3DCapture[]
   
   @@unique([propertyId, level])
   @@map("floors")
@@ -125,6 +135,7 @@ model Room {
   floor        Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
   beds         Bed[]
   amenities    RoomAmenity[]
+  threeDCaptures Room3DCapture[]
   
   @@unique([floorId, roomNumber])
   @@map("rooms")
@@ -141,12 +152,13 @@ model RoomAmenity {
 }
 
 model Bed {
-  id         String         @id @default(cuid())
-  roomId     String
-  identifier String         // "A", "B", "C" or "1", "2", "3"
-  status     String         @default("VACANT") // "VACANT" | "OCCUPIED" | "MAINTENANCE"
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id                   String         @id @default(cuid())
+  roomId               String
+  identifier           String         // "A", "B", "C" or "1", "2", "3"
+  status               String         @default("VACANT") // "VACANT" | "OCCUPIED" | "MAINTENANCE" | "OWNER_MANAGED"
+  isTrustNestInventory Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
   
   // Relations
   room       Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -369,38 +381,72 @@ model Notification {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   userId      String
   propertyId  String
   bedId       String?
   startDate   DateTime
   endDate     DateTime?
-  status      String        @default("CONFIRMED") // "PENDING" | "CONFIRMED" | "CANCELLED"
+  status      String         @default("CONFIRMED") // "PENDING" | "CONFIRMED" | "CANCELLED" | "PAYMENT_FAILED"
   totalAmount Float
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   payments    Payment[]
+  splits      PaymentSplit[]
 
   @@map("bookings")
 }
 
 model Payment {
-  id            String    @id @default(cuid())
-  bookingId     String
-  amount        Float
-  status        String    @default("PENDING") // "PENDING" | "PAID" | "OVERDUE"
-  dueDate       DateTime?
-  paidAt        DateTime?
-  paymentMethod String?   // "UPI" | "CASH" | "BANK_TRANSFER" | "CARD"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String             @id @default(cuid())
+  transactionId  String?            @unique
+  userId         String?
+  ownerId        String?
+  propertyId     String?
+  bookingId      String?
+  subscriptionId String?
+  amount         Float
+  currency       String             @default("INR")
+  status         String             @default("PENDING") // "SUCCESS" | "PAID" | "PENDING" | "FAILED"
+  paymentMode    String             @default("DEMO") // "DEMO" | "CASHFREE"
+  paymentGateway String             @default("DEMO") // "DEMO" | "CASHFREE"
+  type           String             @default("BOOKING") // "BOOKING" | "SUBSCRIPTION" | "RENT"
+  dueDate        DateTime?
+  paidAt         DateTime?
+  paymentMethod  String?            @default("DEMO") // "UPI" | "CARD" | "NETBANKING" | "DEMO"
+  failureReason  String?
+  metadata       String?            // JSON metadata
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
-  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user           User?              @relation("UserPayments", fields: [userId], references: [id], onDelete: SetNull)
+  owner          User?              @relation("OwnerReceivedPayments", fields: [ownerId], references: [id], onDelete: SetNull)
+  property       Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  booking        Booking?           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  subscription   OwnerSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  split          PaymentSplit?
 
   @@map("payments")
+}
+
+model PaymentSplit {
+  id              String    @id @default(cuid())
+  paymentId       String?   @unique
+  bookingId       String?
+  totalAmount     Float
+  trustNestAmount Float     // e.g. 10% platform commission
+  ownerAmount     Float     // e.g. 90% owner share
+  currency        String    @default("INR")
+  status          String    @default("SETTLED") // "PENDING" | "SETTLED" | "FAILED"
+  createdAt       DateTime  @default(now())
+
+  payment         Payment?  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  booking         Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payment_splits")
 }
 
 model TrustScoreLog {
@@ -416,35 +462,44 @@ model TrustScoreLog {
 }
 
 model OwnerSubscription {
-  id                 String    @id @default(cuid())
+  id                 String                @id @default(cuid())
   ownerId            String
-  planName           String    @default("TRUSTNEST_PRO") // e.g. "₹2,000 / month"
-  amount             Float     @default(2000.0)
-  status             String    @default("ACTIVE") // "ACTIVE" | "PENDING" | "PAST_DUE" | "CANCELLED" | "EXPIRED"
-  billingCycle       String    @default("MONTHLY")
-  currentPeriodStart DateTime  @default(now())
-  currentPeriodEnd   DateTime
-  cfSubscriptionId   String?   // Cashfree Subscription ID
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  propertyId         String?
+  planName           String                @default("TrustNest PG Owner Plan")
+  amount             Float                 @default(2000.0)
+  currency           String                @default("INR")
+  status             String                @default("PENDING") // "ACTIVE" | "PENDING" | "FAILED" | "PAST_DUE" | "CANCELLED" | "EXPIRED"
+  billingCycle       String                @default("MONTHLY")
+  startDate          DateTime?             @default(now())
+  nextBillingDate    DateTime?
+  currentPeriodStart DateTime?             @default(now())
+  currentPeriodEnd   DateTime?
+  transactionId      String?
+  paymentMode        String                @default("DEMO")
+  failureReason      String?
+  cfSubscriptionId   String?               // Cashfree Subscription ID
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  owner              User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner              User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  property           Property?             @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  payments           Payment[]
   invoices           SubscriptionInvoice[]
 
   @@map("owner_subscriptions")
 }
 
 model SubscriptionInvoice {
-  id             String    @id @default(cuid())
+  id             String            @id @default(cuid())
   subscriptionId String
   amount         Float
-  cfOrderId      String?   @unique
+  cfOrderId      String?           @unique
   cfPaymentId    String?
-  status         String    @default("PAID") // "PENDING" | "PAID" | "FAILED"
+  status         String            @default("PAID") // "PENDING" | "PAID" | "FAILED"
   paidAt         DateTime?
   receiptUrl     String?
   billingMonth   String
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime          @default(now())
 
   subscription   OwnerSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -466,4 +521,67 @@ model OwnerPayoutAccount {
   owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@map("owner_payout_accounts")
+}
+
+model ChatThread {
+  id          String        @id @default(cuid())
+  userId      String
+  ownerId     String
+  propertyId  String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation("UserChatThreads", fields: [userId], references: [id], onDelete: Cascade)
+  owner       User          @relation("OwnerChatThreads", fields: [ownerId], references: [id], onDelete: Cascade)
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+
+  @@unique([userId, ownerId, propertyId])
+  @@map("chat_threads")
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  threadId  String
+  senderId  String
+  content   String
+  createdAt DateTime   @default(now())
+
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User       @relation("UserChatMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model Room3DCapture {
+  id                    String    @id @default(cuid())
+  propertyId            String
+  floorId               String
+  roomId                String
+  captureMethod         String    // "PHOTO" | "VIDEO"
+  status                String    @default("UPLOADING") // "DRAFT" | "UPLOADING" | "PROCESSING" | "GENERATING_MODEL" | "OPTIMIZING" | "READY_FOR_OWNER_REVIEW" | "OWNER_APPROVED" | "PENDING_ADMIN_REVIEW" | "PUBLISHED" | "REJECTED" | "NEEDS_RECAPTURE" | "FAILED"
+  originalMediaUrl      String    // JSON array of photo URLs or single video URL
+  processedModelUrl     String?   // URL to .glb 3D model asset
+  thumbnailUrl          String?   // 2D preview thumbnail
+  mediaQualityScore     Float?    // 0.0 - 5.0
+  mediaCoverageScore    Float?    // 0.0 - 100%
+  coverageDetails       String?   // JSON breakdown of room elements
+  ownerApproved         Boolean   @default(false)
+  ownerApprovedAt       DateTime?
+  adminApproved         Boolean   @default(false)
+  adminApprovedAt       DateTime?
+  adminRejectionReason  String?
+  processingProvider    String    @default("TRUSTNEST_3D_PIPELINE")
+  processingJobId       String?
+  processingError       String?
+  modelVersion          Int       @default(1)
+  templateName          String?   // e.g. "Standard Double Sharing"
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  property              Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  floor                 Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  room                  Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("room_3d_captures")
 }

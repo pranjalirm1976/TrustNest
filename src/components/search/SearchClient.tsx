@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Navbar from '@/components/public/Navbar'
 import Footer from '@/components/public/Footer'
 import SearchHeader from './SearchHeader'
@@ -32,14 +33,26 @@ interface SearchClientProps {
 }
 
 export default function SearchClient({ initialProperties }: SearchClientProps) {
+  const searchParams = useSearchParams()
+  const initialLocation = searchParams.get('location') || searchParams.get('query') || ''
+  const initialGender = searchParams.get('gender')?.toUpperCase() || ''
+
   // Search state hooks
-  const [query, setQuery] = useState('')
-  const [gender, setGender] = useState('')
+  const [query, setQuery] = useState(initialLocation)
+  const [gender, setGender] = useState(initialGender)
   const [budgetRange, setBudgetRange] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [minScore, setMinScore] = useState(0)
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
   
+  // Sync if searchParams change
+  useEffect(() => {
+    const loc = searchParams.get('location') || searchParams.get('query')
+    if (loc !== null) setQuery(loc)
+    const gen = searchParams.get('gender')
+    if (gen !== null) setGender(gen.toUpperCase())
+  }, [searchParams])
+
   // Highlighting property hover states
   const [highlightedPropertyId, setHighlightedPropertyId] = useState<string | null>(null)
   
@@ -68,16 +81,19 @@ export default function SearchClient({ initialProperties }: SearchClientProps) {
   const filteredProperties = useMemo(() => {
     return initialProperties.filter((property) => {
       // 1. Text Search matching name, address, landmarks
-      if (query) {
-        const queryLower = query.toLowerCase()
+      if (query && query.trim() !== '') {
+        const queryLower = query.toLowerCase().trim()
         const matchName = property.name.toLowerCase().includes(queryLower)
         const matchAddress = property.address.toLowerCase().includes(queryLower)
         if (!matchName && !matchAddress) return false
       }
 
-      // 2. Gender matching
-      if (gender) {
-        if (property.gender !== gender) return false
+      // 2. Gender matching (UNISEX, MALE, FEMALE)
+      if (gender && gender.trim() !== '') {
+        const pGender = property.gender?.toUpperCase()
+        if (gender === 'MALE' && pGender !== 'MALE' && pGender !== 'BOYS') return false
+        if (gender === 'FEMALE' && pGender !== 'FEMALE' && pGender !== 'GIRLS') return false
+        if (gender === 'UNISEX' && pGender !== 'UNISEX') return false
       }
 
       // 3. Budget Range matching
@@ -92,10 +108,18 @@ export default function SearchClient({ initialProperties }: SearchClientProps) {
         if (property.trustScore < minScore) return false
       }
 
-      // 5. Selected Amenities check
+      // 5. Selected Amenities check (flexible fuzzy matching)
       if (selectedAmenities.length > 0) {
-        const propAmenityNames = property.amenities.map(a => a.name)
-        const hasAllSelected = selectedAmenities.every(a => propAmenityNames.includes(a))
+        const propAmenityNames = property.amenities.map(a => a.name.toLowerCase())
+        const hasAllSelected = selectedAmenities.every(selected => {
+          const sLower = selected.toLowerCase()
+          return propAmenityNames.some(pName => 
+            pName.includes(sLower) || 
+            (sLower.includes('wifi') && pName.includes('wi-fi')) ||
+            (sLower.includes('air conditioning') && (pName.includes('ac') || pName.includes('air conditioned'))) ||
+            (sLower.includes('cctv') && pName.includes('security'))
+          )
+        })
         if (!hasAllSelected) return false
       }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import BlueprintLegend from './BlueprintLegend'
 import Room3DViewerModal from './Room3DViewerModal'
+import BookingModal from '../BookingModal'
 import { Eye, CheckCircle, AlertCircle, Bed, User, Wind, ShieldCheck, MapPin, IndianRupee } from 'lucide-react'
 import Image from 'next/image'
 
@@ -44,11 +45,17 @@ type Floor = {
 }
 
 interface InteractiveBlueprintProps {
+  property?: {
+    id: string
+    name: string
+    address: string
+    priceFrom: number
+  }
   floors?: Floor[]
   priceFrom: number
 }
 
-export default function InteractiveBlueprint({ floors = [], priceFrom }: InteractiveBlueprintProps) {
+export default function InteractiveBlueprint({ property, floors = [], priceFrom }: InteractiveBlueprintProps) {
   // If property has database floors, use them; otherwise provide standard blueprint floors
   const defaultFloors: Floor[] = [
     {
@@ -103,6 +110,8 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
   const [activeFloorId, setActiveFloorId] = useState<string>(activeFloorsList[0]?.id || 'floor1')
   const [activeRoomId, setActiveRoomId] = useState<string>('')
   const [show3DModal, setShow3DModal] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedBedIdToBook, setSelectedBedIdToBook] = useState<string>('')
 
   // Ensure active floor exists
   const activeFloor = activeFloorsList.find(f => f.id === activeFloorId) || activeFloorsList[0]
@@ -146,6 +155,11 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
     activeRoom?.capacity === 2 ? priceFrom :
     priceFrom * 0.85
   )
+
+  const handleOpenBooking = (bedId?: string) => {
+    setSelectedBedIdToBook(bedId || '')
+    setShowBookingModal(true)
+  }
 
   return (
     <div id="layout" className="bg-white border border-slate-200 p-6 rounded-3xl shadow-premium flex flex-col gap-6 w-full mt-4">
@@ -317,12 +331,15 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
                   <div className="space-y-1.5">
                     {activeRoom.beds.map((bed) => {
                       const isVacant = bed.status === 'VACANT'
+                      const isReserved = bed.status === 'RESERVED' || bed.status === 'MAINTENANCE'
                       return (
                         <div 
                           key={bed.id}
                           className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold ${
                             isVacant 
                               ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900' 
+                              : isReserved
+                              ? 'bg-amber-50/60 border-amber-200 text-amber-900'
                               : 'bg-red-50/60 border-red-200 text-red-900'
                           }`}
                         >
@@ -330,11 +347,21 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
                             <Bed className="w-3.5 h-3.5" />
                             <span>Bed {bed.identifier}</span>
                           </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                            isVacant ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {isVacant ? 'Available' : 'Occupied'}
-                          </span>
+                          {isVacant ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenBooking(bed.id)}
+                              className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all cursor-pointer"
+                            >
+                              Book Bed
+                            </button>
+                          ) : (
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                              isReserved ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {isReserved ? 'Reserved' : 'Occupied'}
+                            </span>
+                          )}
                         </div>
                       )
                     })}
@@ -344,12 +371,13 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
                 )}
               </div>
 
-              <a
-                href="#book"
-                className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs py-2.5 rounded-xl shadow-premium text-center transition-all mt-2"
+              <button
+                type="button"
+                onClick={() => handleOpenBooking()}
+                className="w-full bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs py-2.5 rounded-xl shadow-premium text-center transition-all mt-2 cursor-pointer"
               >
                 Book This Room
-              </a>
+              </button>
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-slate-400 text-xs shadow-premium-sm">
@@ -372,6 +400,17 @@ export default function InteractiveBlueprint({ floors = [], priceFrom }: Interac
           }}
           onClose={() => setShow3DModal(false)}
           priceFrom={priceFrom}
+        />
+      )}
+
+      {/* Booking Modal */}
+      {showBookingModal && property && (
+        <BookingModal
+          property={property}
+          floors={floors}
+          initialRoomId={activeRoom?.id}
+          initialBedId={selectedBedIdToBook}
+          onClose={() => setShowBookingModal(false)}
         />
       )}
 
