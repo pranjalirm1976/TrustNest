@@ -169,26 +169,30 @@ export async function registerProperty(formData: FormData) {
     // 1. Guarantee all PostgreSQL tables exist before inserting
     await ensureTablesExist()
 
-    // 2. Ensure owner user exists in database
+    // 2. Guarantee owner user exists in database via upsert
     const ownerEmail = (sessionUser.email || 'rajesh@emeraldelite.com').toLowerCase()
-    let dbOwner = await prisma.user.findFirst({
-      where: { email: ownerEmail }
-    }).catch(() => null)
+    const defaultHash = await bcrypt.hash('superadminpranjali', 10)
+
+    // Use upsert so we never hit a FK violation — always guarantees user row exists
+    const dbOwner = await prisma.user.upsert({
+      where: { email: ownerEmail },
+      update: { role: 'OWNER' },
+      create: {
+        name: sessionUser.name || 'PG Owner',
+        email: ownerEmail,
+        passwordHash: defaultHash,
+        role: 'OWNER'
+      }
+    }).catch(async () => {
+      // If upsert fails, try findFirst as last resort
+      return await prisma.user.findFirst({ where: { email: ownerEmail } }).catch(() => null)
+    })
 
     if (!dbOwner) {
-      const defaultHash = await bcrypt.hash('superadminpranjali', 10)
-      dbOwner = await prisma.user.create({
-        data: {
-          id: sessionUser.id || `owner-${Date.now()}`,
-          name: sessionUser.name || 'PG Owner',
-          email: ownerEmail,
-          passwordHash: defaultHash,
-          role: 'OWNER'
-        }
-      }).catch(() => null)
+      return { success: false, error: 'Could not verify owner account. Please log out and log back in.' }
     }
 
-    const ownerId = dbOwner?.id || sessionUser.id
+    const ownerId = dbOwner.id
 
     const name = (formData.get('name') as string) || 'New TrustNest PG'
     const type = (formData.get('type') as string) || 'coed'
