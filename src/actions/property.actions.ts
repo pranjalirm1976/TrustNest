@@ -11,6 +11,8 @@ import bcrypt from 'bcryptjs'
  * Ensures all PostgreSQL database tables exist before performing queries
  */
 async function ensureTablesExist() {
+  // Tables are created via prisma db push during deployment - no DDL needed at runtime
+  return
   const statements = [
     `CREATE TABLE IF NOT EXISTS "users" (
       "id" TEXT PRIMARY KEY,
