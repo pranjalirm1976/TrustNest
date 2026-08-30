@@ -262,25 +262,25 @@ export function LoginForm() {
           {/* Super Admin Quick Login */}
           <button
             type="button"
-            onClick={() => handleQuickLogin('admin@trustnest.com', 'password123')}
+            onClick={() => handleQuickLogin('admin@trustnest.in', 'superadminpranjali')}
             disabled={isLoading}
-            className="flex items-center gap-2.5 p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/60 hover:bg-purple-900/40 text-left transition-all group"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/60 hover:bg-purple-900/40 text-left transition-all group cursor-pointer"
           >
             <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 group-hover:scale-105 transition-transform">
               <ShieldAlert className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold text-purple-200 truncate">Super Admin</div>
-              <div className="text-[10px] text-purple-400/80 truncate">admin@trustnest.com</div>
+              <div className="text-xs font-bold text-purple-200 truncate">Super Admin (Pranjali)</div>
+              <div className="text-[10px] text-purple-400/80 truncate">admin@trustnest.in</div>
             </div>
           </button>
 
           {/* PG Owner Quick Login */}
           <button
             type="button"
-            onClick={() => handleQuickLogin('rajesh@emeraldelite.com', 'password123')}
+            onClick={() => handleQuickLogin('rajesh@emeraldelite.com', 'superadminpranjali')}
             disabled={isLoading}
-            className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 hover:bg-emerald-900/40 text-left transition-all group"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 hover:bg-emerald-900/40 text-left transition-all group cursor-pointer"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0 group-hover:scale-105 transition-transform">
               <Building2 className="w-4 h-4" />
