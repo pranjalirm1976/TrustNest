@@ -39,19 +39,19 @@ export default function Footer() {
             <span className="text-slate-200">Core Transparency</span>
             <div className="flex flex-col gap-2 lowercase font-normal normal-case text-slate-400">
               <Link href="/food" className="hover:text-white transition-colors">Food Audit Portal</Link>
-              <Link href="/trust-score" className="hover:text-white transition-colors">Trust Score Math</Link>
-              <Link href="/sla-portal" className="hover:text-white transition-colors">SLA Tracking</Link>
-              <Link href="/reviews" className="hover:text-white transition-colors">Resident Reviews</Link>
+              <Link href="/#transparency" className="hover:text-white transition-colors">Trust Score Math</Link>
+              <Link href="/tenant/login" className="hover:text-white transition-colors">SLA Tracking</Link>
+              <Link href="/search" className="hover:text-white transition-colors">Resident Reviews</Link>
             </div>
           </div>
 
           {/* Column 4: Partners */}
           <div className="flex flex-col gap-3 text-xs font-semibold uppercase tracking-wider">
-            <span className="text-slate-200">Operators & Owners</span>
+            <span className="text-slate-200">Operators &amp; Owners</span>
             <div className="flex flex-col gap-2 lowercase font-normal normal-case text-slate-400">
               <Link href="/admin/login" className="hover:text-white transition-colors">Owner Operations Login</Link>
-              <Link href="/inspector/login" className="hover:text-white transition-colors">Auditor Portal</Link>
-              <Link href="/partners" className="hover:text-white transition-colors">Register Your PG</Link>
+              <Link href="/super-admin" className="hover:text-white transition-colors">Super Admin Portal</Link>
+              <Link href="/admin/login?signup=true" className="hover:text-white transition-colors">Register Your PG</Link>
             </div>
           </div>
         </div>
@@ -61,10 +61,10 @@ export default function Footer() {
 
         {/* copyright and terms */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} TrustNest Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} TrustNest Technologies Pvt. Ltd. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link href="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
-            <Link href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+            <Link href="/" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+            <Link href="/" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
           </div>
         </div>
       </div>
