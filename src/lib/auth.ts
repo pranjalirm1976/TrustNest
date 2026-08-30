@@ -76,10 +76,8 @@ export const authOptions: NextAuthOptions = {
               : 'Priya Sharma'
 
           // 1. Try finding user in database
-          let user = await prisma.user.findFirst({
-            where: {
-              email: { equals: rawEmail }
-            }
+          let user = await prisma.user.findUnique({
+            where: { email: rawEmail }
           }).catch(() => null)
 
           if (user) {
@@ -91,7 +89,7 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          // 2. If user is not yet in the DB, auto-create or return authorized session
+          // 2. If user is not yet in the DB, create them
           try {
             const hashedPassword = await bcrypt.hash('superadminpranjali', 10)
             user = await prisma.user.upsert({
@@ -103,15 +101,19 @@ export const authOptions: NextAuthOptions = {
                 passwordHash: hashedPassword,
                 role
               }
-            }).catch(() => null)
+            })
           } catch (_) {}
 
-          return {
-            id: user?.id || (isSuperAdmin ? 'superadmin-pranjali' : isOwner ? 'owner-rajesh' : 'tenant-priya'),
-            email: rawEmail,
-            name: user?.name || defaultName,
-            role
+          if (user) {
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role as Role
+            }
           }
+
+          throw new Error('Could not initialize user profile in database.')
         } catch (error) {
           console.error('Auth error:', error)
           throw error

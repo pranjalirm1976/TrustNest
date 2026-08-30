@@ -1,9 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 
-// Verified working Supabase Transaction Pooler URL with pgbouncer=true (tested with 10 concurrent queries)
-const SUPABASE_DB_URL =
-  'postgresql://postgres.ouynlrtuwmbrzxlrmone:TrustNest2026%40DB@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require'
-
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
@@ -11,10 +7,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: { url: SUPABASE_DB_URL }
-    },
-    log: ['error'],
+    log: process.env.NODE_ENV === 'development'
+      ? ['warn', 'error']
+      : ['error'],
   })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+}

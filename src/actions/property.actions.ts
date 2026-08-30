@@ -3,19 +3,57 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
-import { uploadLocalFile } from '@/lib/upload'
+import { uploadLocalFile, deleteUploadedFile, validateImageFile } from '@/lib/upload'
+
+/**
+ * Validates whether a database user role is authorized to create properties
+ */
+export function canCreateProperty(role: string): boolean {
+  return ['OWNER', 'PG_OWNER', 'SUPER_ADMIN', 'INSPECTOR'].includes(role)
+}
+
+/**
+ * Generates spreadsheet-style bed identifiers: A, B, ..., Z, AA, AB, ..., AZ, BA, etc.
+ */
+export function getBedIdentifier(index: number): string {
+  let result = ''
+  let num = index
+  while (num >= 0) {
+    result = String.fromCharCode(65 + (num % 26)) + result
+    num = Math.floor(num / 26) - 1
+  }
+  return result
+}
+
+interface ParsedFloorInput {
+  level: number
+  name: string
+  layoutUrl?: string | null
+}
+
+interface ParsedRoomInput {
+  floorLevel: number
+  roomNumber: string
+  capacity: number
+  sharingType: string
+  pricePerBed: number
+  hasWashroom: boolean
+  hasAc: boolean
+  hasBalcony: boolean
+}
 
 /**
  * Creates and registers a new PG property with complete atomicity inside a Prisma transaction:
- * - Server-side authentication and owner validation
- * - Categorized property photos
- * - Dynamic floors & separate architectural floor layouts
- * - Rooms with capacities, AC/washroom/balcony options, and bed states
- * - Amenities
- * - Publishes to the Homepage & Search discovery listings
+ * - Server-side authentication and database role authorization
+ * - Strict server-side field, coordinate, and JSON payload validation
+ * - Safe file validation with best-effort cleanup on transaction failure
+ * - Atomic database transaction with explicit timeouts
  */
 export async function registerProperty(formData: FormData) {
+  const uploadedFileUrls: string[] = []
+
   try {
     // 1. Authenticate user server-side
     const session = await getServerSession(authOptions)
@@ -27,75 +65,206 @@ export async function registerProperty(formData: FormData) {
     }
 
     const sessionEmail = session.user.email?.toLowerCase().trim()
-    const sessionRole = session.user.role
+    const sessionUserId = session.user.id
 
-    // 2. Validate role permissions
-    const isAuthorizedRole = 
-      sessionRole === 'OWNER' || 
-      sessionRole === 'PG_OWNER' || 
-      sessionRole === 'SUPER_ADMIN' || 
-      sessionRole === 'INSPECTOR'
-
-    if (!isAuthorizedRole) {
-      return { 
-        success: false, 
-        error: 'Access denied. You do not have permissions to register a PG.' 
+    if (!sessionEmail && !sessionUserId) {
+      return {
+        success: false,
+        error: 'Invalid session profile. Please sign out and sign in again.'
       }
     }
 
-    // 3. Resolve authenticated owner user in database
-    let dbUser = await prisma.user.findFirst({
-      where: sessionEmail ? { email: sessionEmail } : { id: session.user.id }
-    }).catch(() => null)
-
-    // If user was not found by email, try by ID
-    if (!dbUser && session.user.id) {
-      dbUser = await prisma.user.findUnique({
-        where: { id: session.user.id }
-      }).catch(() => null)
-    }
+    // 2. Resolve database user and authorize via database role as source of truth
+    const dbUser = sessionEmail
+      ? await prisma.user.findUnique({ where: { email: sessionEmail } })
+      : await prisma.user.findUnique({ where: { id: sessionUserId } })
 
     if (!dbUser) {
       return { 
         success: false, 
-        error: 'Your owner profile was not found. Please log out and sign in again.' 
+        error: 'Your owner account was not found in the database. Please sign out and sign in again.' 
+      }
+    }
+
+    if (!canCreateProperty(dbUser.role)) {
+      return { 
+        success: false, 
+        error: `Access denied. Users with role "${dbUser.role}" cannot register properties.` 
       }
     }
 
     const resolvedOwnerId = dbUser.id
 
-    // 4. Extract and validate property payload from FormData
-    const name = (formData.get('name') as string)?.trim() || 'New TrustNest PG'
-    const type = (formData.get('type') as string)?.trim() || 'coed'
-    const description = (formData.get('description') as string)?.trim() || ''
-    const address = (formData.get('address') as string)?.trim() || 'Pune, Maharashtra'
-    const city = (formData.get('city') as string)?.trim() || 'Pune'
-    const area = (formData.get('area') as string)?.trim() || 'Hinjawadi'
-    const pincode = (formData.get('pincode') as string)?.trim() || '411057'
-    const lat = parseFloat(formData.get('latitude') as string) || 18.5913
-    const lng = parseFloat(formData.get('longitude') as string) || 73.7389
-    const priceFrom = parseFloat(formData.get('priceFrom') as string) || 8500
-    const amenitiesJson = formData.get('amenities') as string
-    const floorsJson = formData.get('floors') as string
-    const roomsJson = formData.get('rooms') as string
+    // 3. Strict Server-side Validation of Form Fields
+    const rawName = formData.get('name')
+    const name = typeof rawName === 'string' ? rawName.trim() : ''
+    if (!name || name.length < 2 || name.length > 120) {
+      return { success: false, error: 'Property name is required and must be between 2 and 120 characters.' }
+    }
 
-    let amenitiesList: string[] = ['Wi-Fi', 'AC', 'Food', 'Security']
-    if (amenitiesJson) {
-      try {
-        const parsed = JSON.parse(amenitiesJson)
-        if (Array.isArray(parsed)) amenitiesList = parsed
-      } catch (_) {}
+    const rawAddress = formData.get('address')
+    const address = typeof rawAddress === 'string' ? rawAddress.trim() : ''
+    if (!address || address.length < 5) {
+      return { success: false, error: 'Street address is required and must be at least 5 characters.' }
+    }
+
+    const rawCity = formData.get('city')
+    const city = typeof rawCity === 'string' ? rawCity.trim() : ''
+    if (!city) {
+      return { success: false, error: 'City is required.' }
+    }
+
+    const rawArea = formData.get('area')
+    const area = typeof rawArea === 'string' ? rawArea.trim() : ''
+    if (!area) {
+      return { success: false, error: 'Locality/Area is required.' }
+    }
+
+    const rawPincode = formData.get('pincode')
+    const pincode = typeof rawPincode === 'string' ? rawPincode.trim() : ''
+    if (!pincode || !/^\d{6}$/.test(pincode)) {
+      return { success: false, error: 'A valid 6-digit postal code (pincode) is required.' }
+    }
+
+    const rawLat = parseFloat(formData.get('latitude') as string)
+    const rawLng = parseFloat(formData.get('longitude') as string)
+    if (!Number.isFinite(rawLat) || rawLat < -90 || rawLat > 90) {
+      return { success: false, error: 'Valid latitude between -90 and 90 is required.' }
+    }
+    if (!Number.isFinite(rawLng) || rawLng < -180 || rawLng > 180) {
+      return { success: false, error: 'Valid longitude between -180 and 180 is required.' }
+    }
+
+    const rawPriceFrom = parseFloat(formData.get('priceFrom') as string)
+    if (!Number.isFinite(rawPriceFrom) || rawPriceFrom <= 0) {
+      return { success: false, error: 'Starting monthly rent must be a positive number.' }
+    }
+
+    const rawType = (formData.get('type') as string)?.toLowerCase().trim() || 'coed'
+    const allowedTypes = ['boys', 'girls', 'coed', 'male', 'female', 'unisex']
+    if (!allowedTypes.includes(rawType)) {
+      return { success: false, error: 'Invalid PG gender category selected.' }
     }
 
     const genderMapping: Record<string, string> = {
       boys: 'MALE',
+      male: 'MALE',
       girls: 'FEMALE',
-      coed: 'UNISEX'
+      female: 'FEMALE',
+      coed: 'UNISEX',
+      unisex: 'UNISEX'
     }
-    const gender = genderMapping[type.toLowerCase()] || 'UNISEX'
+    const gender = genderMapping[rawType] || 'UNISEX'
+    const description = ((formData.get('description') as string) || '').trim()
     const fullAddress = `${address}, ${area}, ${city} - ${pincode}`
 
-    // 5. Upload files before transaction to avoid long-lived DB transactions
+    // 4. Validate Amenities JSON
+    let amenitiesList: string[] = []
+    const amenitiesJson = formData.get('amenities') as string | null
+    if (amenitiesJson) {
+      try {
+        const parsed = JSON.parse(amenitiesJson)
+        if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'string')) {
+          return { success: false, error: 'Amenities payload must be an array of strings.' }
+        }
+        amenitiesList = parsed.map(s => s.trim()).filter(Boolean)
+      } catch (_) {
+        return { success: false, error: 'Invalid amenities JSON format submitted.' }
+      }
+    }
+
+    // 5. Validate Floors JSON
+    let parsedFloors: ParsedFloorInput[] = [
+      { level: 0, name: 'Ground Floor' },
+      { level: 1, name: '1st Floor' }
+    ]
+    const floorsJson = formData.get('floors') as string | null
+    if (floorsJson) {
+      try {
+        const customFloors = JSON.parse(floorsJson)
+        if (!Array.isArray(customFloors) || customFloors.length === 0) {
+          return { success: false, error: 'Floors payload must be a non-empty array.' }
+        }
+        const validatedFloors: ParsedFloorInput[] = []
+        const seenLevels = new Set<number>()
+
+        for (const fl of customFloors) {
+          const level = parseInt(fl.level, 10)
+          const floorName = typeof fl.name === 'string' ? fl.name.trim() : ''
+          if (!Number.isInteger(level)) {
+            return { success: false, error: 'Floor level must be an integer.' }
+          }
+          if (!floorName) {
+            return { success: false, error: 'Floor name cannot be empty.' }
+          }
+          if (seenLevels.has(level)) {
+            return { success: false, error: `Duplicate floor level ${level} detected.` }
+          }
+          seenLevels.add(level)
+          validatedFloors.push({ level, name: floorName })
+        }
+        parsedFloors = validatedFloors
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Invalid floors JSON format.' }
+      }
+    }
+
+    const availableFloorLevels = new Set(parsedFloors.map(f => f.level))
+
+    // 6. Validate Rooms JSON
+    let parsedRooms: ParsedRoomInput[] = []
+    const roomsJson = formData.get('rooms') as string | null
+    if (roomsJson) {
+      try {
+        const customRooms = JSON.parse(roomsJson)
+        if (!Array.isArray(customRooms)) {
+          return { success: false, error: 'Rooms payload must be an array.' }
+        }
+
+        const seenFloorRoomNumbers = new Set<string>()
+
+        for (const rm of customRooms) {
+          const floorLevel = parseInt(rm.floorLevel, 10)
+          const roomNumber = typeof rm.roomNumber === 'string' ? rm.roomNumber.trim() : ''
+          const capacity = parseInt(rm.capacity, 10)
+          const pricePerBed = parseFloat(rm.pricePerBed)
+
+          if (!Number.isInteger(floorLevel) || !availableFloorLevels.has(floorLevel)) {
+            return { success: false, error: `Room ${roomNumber || 'Unknown'} references non-existent floor level ${rm.floorLevel}.` }
+          }
+          if (!roomNumber) {
+            return { success: false, error: 'Room number is required for all configured rooms.' }
+          }
+          if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10) {
+            return { success: false, error: `Capacity for room ${roomNumber} must be an integer between 1 and 10.` }
+          }
+          if (!Number.isFinite(pricePerBed) || pricePerBed <= 0) {
+            return { success: false, error: `Price per bed for room ${roomNumber} must be a positive number.` }
+          }
+
+          const uniqueKey = `${floorLevel}-${roomNumber}`
+          if (seenFloorRoomNumbers.has(uniqueKey)) {
+            return { success: false, error: `Duplicate room number "${roomNumber}" on floor level ${floorLevel}.` }
+          }
+          seenFloorRoomNumbers.add(uniqueKey)
+
+          parsedRooms.push({
+            floorLevel,
+            roomNumber,
+            capacity,
+            sharingType: typeof rm.sharingType === 'string' ? rm.sharingType : 'DOUBLE',
+            pricePerBed,
+            hasWashroom: Boolean(rm.hasWashroom),
+            hasAc: Boolean(rm.hasAc),
+            hasBalcony: Boolean(rm.hasBalcony),
+          })
+        }
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Invalid rooms JSON format.' }
+      }
+    }
+
+    // 7. Process & Validate Image and Layout Uploads (Outside DB Transaction)
     const photoCategories = [
       { key: 'photo_exterior', category: 'exterior', isCover: true, alt: `${name} Exterior` },
       { key: 'photo_entrance', category: 'lobby', isCover: false, alt: `${name} Entrance & Lobby` },
@@ -111,19 +280,15 @@ export async function registerProperty(formData: FormData) {
     for (const item of photoCategories) {
       const file = formData.get(item.key) as File | null
       if (file && file.size > 0) {
-        try {
-          const url = await uploadLocalFile(file)
-          const isCover = item.isCover && !hasCover
-          uploadedImagesList.push({
-            url,
-            category: item.category,
-            altText: item.alt,
-            isCover,
-          })
-          if (isCover) hasCover = true
-        } catch (err) {
-          console.warn(`Failed to upload ${item.key}:`, err)
+        const validation = validateImageFile(file)
+        if (!validation.valid) {
+          return { success: false, error: validation.error || 'Invalid image file.' }
         }
+        const url = await uploadLocalFile(file)
+        uploadedFileUrls.push(url)
+        const isCover = item.isCover && !hasCover
+        uploadedImagesList.push({ url, category: item.category, altText: item.alt, isCover })
+        if (isCover) hasCover = true
       }
     }
 
@@ -136,143 +301,128 @@ export async function registerProperty(formData: FormData) {
       })
     }
 
-    // Process floors and layout blueprint uploads
-    let parsedFloors: { level: number; name: string; layoutUrl?: string | null }[] = [
-      { level: 0, name: 'Ground Floor' },
-      { level: 1, name: '1st Floor' },
-    ]
-
-    if (floorsJson) {
-      try {
-        const customFloors = JSON.parse(floorsJson)
-        if (Array.isArray(customFloors) && customFloors.length > 0) {
-          parsedFloors = customFloors
-        }
-      } catch (_) {}
-    }
-
+    // Process floor blueprint layout files
     for (const fl of parsedFloors) {
       const layoutFile = (formData.get(`floor_layout_${fl.level}`) || formData.get(`floor_layout_${fl.name}`)) as File | null
       if (layoutFile && layoutFile.size > 0) {
-        try {
-          fl.layoutUrl = await uploadLocalFile(layoutFile)
-        } catch (err) {
-          console.warn(`Floor layout upload failed for level ${fl.level}:`, err)
+        const validation = validateImageFile(layoutFile)
+        if (!validation.valid) {
+          return { success: false, error: `Floor layout for ${fl.name}: ${validation.error}` }
         }
+        const layoutUrl = await uploadLocalFile(layoutFile)
+        uploadedFileUrls.push(layoutUrl)
+        fl.layoutUrl = layoutUrl
       }
     }
 
-    // 6. Execute atomic Prisma transaction
-    const createdProperty = await prisma.$transaction(async (tx) => {
-      // 6a. Create Property record
-      const property = await tx.property.create({
-        data: {
-          ownerId: resolvedOwnerId,
-          name,
-          description,
-          address: fullAddress,
-          latitude: lat,
-          longitude: lng,
-          priceFrom,
-          gender,
-          trustScore: 4.8,
-          status: 'PENDING_VERIFICATION',
-        }
-      })
-
-      // 6b. Create Property Images
-      if (uploadedImagesList.length > 0) {
-        await tx.propertyImage.createMany({
-          data: uploadedImagesList.map((img) => ({
-            propertyId: property.id,
-            url: img.url,
-            category: img.category,
-            altText: img.altText,
-            isCover: img.isCover,
-          }))
-        })
-      }
-
-      // 6c. Create Amenities
-      if (amenitiesList.length > 0) {
-        await tx.amenity.createMany({
-          data: amenitiesList.map((item) => ({
-            propertyId: property.id,
-            name: item,
-            isAvailable: true,
-          }))
-        })
-      }
-
-      // 6d. Create Floors
-      const floorIdMap = new Map<number, string>()
-      for (const fl of parsedFloors) {
-        const floorRecord = await tx.floor.create({
+    // 8. Execute Atomic Prisma Transaction (Database Writes Only)
+    const createdProperty = await prisma.$transaction(
+      async (tx) => {
+        // 8a. Create Property
+        const property = await tx.property.create({
           data: {
-            propertyId: property.id,
-            level: fl.level,
-            name: fl.name,
-            layoutUrl: fl.layoutUrl || null,
+            ownerId: resolvedOwnerId,
+            name,
+            description,
+            address: fullAddress,
+            latitude: rawLat,
+            longitude: rawLng,
+            priceFrom: rawPriceFrom,
+            gender,
+            trustScore: 4.8,
+            status: 'PENDING_VERIFICATION',
           }
         })
-        floorIdMap.set(fl.level, floorRecord.id)
-      }
 
-      // 6e. Create Rooms & Beds
-      if (roomsJson) {
-        try {
-          const customRooms = JSON.parse(roomsJson)
-          if (Array.isArray(customRooms) && customRooms.length > 0) {
-            for (const rm of customRooms) {
-              let targetFloorId = floorIdMap.get(rm.floorLevel)
-              if (!targetFloorId && floorIdMap.size > 0) {
-                targetFloorId = Array.from(floorIdMap.values())[0]
+        // 8b. Create Property Images
+        if (uploadedImagesList.length > 0) {
+          await tx.propertyImage.createMany({
+            data: uploadedImagesList.map((img) => ({
+              propertyId: property.id,
+              url: img.url,
+              category: img.category,
+              altText: img.altText,
+              isCover: img.isCover,
+            }))
+          })
+        }
+
+        // 8c. Create Amenities
+        if (amenitiesList.length > 0) {
+          await tx.amenity.createMany({
+            data: amenitiesList.map((item) => ({
+              propertyId: property.id,
+              name: item,
+              isAvailable: true,
+            }))
+          })
+        }
+
+        // 8d. Create Floors
+        const floorIdMap = new Map<number, string>()
+        for (const fl of parsedFloors) {
+          const floorRecord = await tx.floor.create({
+            data: {
+              propertyId: property.id,
+              level: fl.level,
+              name: fl.name,
+              layoutUrl: fl.layoutUrl || null,
+            }
+          })
+          floorIdMap.set(fl.level, floorRecord.id)
+        }
+
+        // 8e. Create Rooms & Beds with robust bed identifier generation
+        if (parsedRooms.length > 0) {
+          for (const rm of parsedRooms) {
+            const targetFloorId = floorIdMap.get(rm.floorLevel)
+            if (!targetFloorId) {
+              throw new Error(`Target floor level ${rm.floorLevel} was not initialized in database.`)
+            }
+
+            const roomRecord = await tx.room.create({
+              data: {
+                floorId: targetFloorId,
+                roomNumber: rm.roomNumber,
+                capacity: rm.capacity,
+                sharingType: rm.sharingType,
+                pricePerBed: rm.pricePerBed,
+                hasWashroom: rm.hasWashroom,
+                hasAc: rm.hasAc,
+                hasBalcony: rm.hasBalcony,
               }
+            })
 
-              if (targetFloorId) {
-                const roomRecord = await tx.room.create({
-                  data: {
-                    floorId: targetFloorId,
-                    roomNumber: rm.roomNumber || '101',
-                    capacity: rm.capacity || 2,
-                    sharingType: rm.sharingType || 'DOUBLE',
-                    pricePerBed: rm.pricePerBed || priceFrom,
-                    hasWashroom: Boolean(rm.hasWashroom),
-                    hasAc: Boolean(rm.hasAc),
-                    hasBalcony: Boolean(rm.hasBalcony),
-                  }
-                })
+            const bedData = []
+            for (let i = 0; i < rm.capacity; i++) {
+              bedData.push({
+                roomId: roomRecord.id,
+                identifier: getBedIdentifier(i),
+                status: 'VACANT',
+                isTrustNestInventory: true,
+              })
+            }
 
-                const bedCount = rm.capacity || 2
-                const bedData = []
-                for (let i = 0; i < bedCount; i++) {
-                  bedData.push({
-                    roomId: roomRecord.id,
-                    identifier: String.fromCharCode(65 + i),
-                    status: 'VACANT',
-                    isTrustNestInventory: true,
-                  })
-                }
-                if (bedData.length > 0) {
-                  await tx.bed.createMany({ data: bedData })
-                }
-              }
+            if (bedData.length > 0) {
+              await tx.bed.createMany({ data: bedData })
             }
           }
-        } catch (roomErr) {
-          console.warn('Rooms parsing notice:', roomErr)
         }
+
+        return property
+      },
+      {
+        maxWait: 5000,
+        timeout: 10000,
       }
+    )
 
-      return property
-    })
-
-    // 7. Notify Super Admins
+    // 9. Notify Super Admins
     try {
       const superAdmins = await prisma.user.findMany({
         where: { role: 'SUPER_ADMIN' },
         select: { id: true }
-      }).catch(() => [])
+      })
 
       if (superAdmins.length > 0) {
         await prisma.notification.createMany({
@@ -282,18 +432,18 @@ export async function registerProperty(formData: FormData) {
             message: `PG: ${createdProperty.name} | Location: ${address} | Status: PENDING_VERIFICATION.`,
             type: 'SYSTEM'
           }))
-        }).catch(() => null)
+        })
       }
-    } catch (_) {}
+    } catch (notifErr) {
+      console.warn('Super Admin notification notice:', notifErr)
+    }
 
-    // 8. Revalidate cached paths
-    try {
-      revalidatePath('/')
-      revalidatePath('/search')
-      revalidatePath('/admin/properties')
-      revalidatePath('/super-admin')
-      revalidatePath('/admin/verification')
-    } catch (_) {}
+    // 10. Revalidate Paths
+    revalidatePath('/')
+    revalidatePath('/search')
+    revalidatePath('/admin/properties')
+    revalidatePath('/super-admin')
+    revalidatePath('/admin/verification')
 
     return { 
       success: true, 
@@ -302,11 +452,39 @@ export async function registerProperty(formData: FormData) {
     }
   } catch (error: any) {
     console.error('Property registration error:', error)
+
+    // Best-effort cleanup of orphaned uploaded files if transaction failed
+    if (uploadedFileUrls.length > 0) {
+      for (const fileUrl of uploadedFileUrls) {
+        await deleteUploadedFile(fileUrl)
+      }
+    }
+
+    // Specific Prisma Known Request Error Mapping
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2003') {
+        return {
+          success: false,
+          error: 'Your owner account could not be verified in the database. Please sign out and sign in again.'
+        }
+      }
+      if (error.code === 'P2002') {
+        return {
+          success: false,
+          error: 'A room or floor with this number already exists for this property.'
+        }
+      }
+      if (error.code === 'P2025') {
+        return {
+          success: false,
+          error: 'A required record was not found while saving. Please try again.'
+        }
+      }
+    }
+
     return { 
       success: false, 
-      error: error?.message?.includes('Foreign key')
-        ? 'Your owner profile is not registered in the system. Please sign in again.'
-        : 'Unable to save the PG right now. Please try again.' 
+      error: error?.message || 'Unable to save the PG right now. Please try again.' 
     }
   }
 }
@@ -326,13 +504,11 @@ export async function verifyProperty(
       include: { owner: true }
     })
 
-    try {
-      revalidatePath('/')
-      revalidatePath('/search')
-      revalidatePath(`/pg/${propertyId}`)
-      revalidatePath('/super-admin')
-      revalidatePath('/admin/verification')
-    } catch (_) {}
+    revalidatePath('/')
+    revalidatePath('/search')
+    revalidatePath(`/pg/${propertyId}`)
+    revalidatePath('/super-admin')
+    revalidatePath('/admin/verification')
 
     return { 
       success: true, 
@@ -343,8 +519,8 @@ export async function verifyProperty(
     console.error('verifyProperty error:', error)
     return { 
       success: false, 
-      error: error.message || 'Failed to update property status',
-      message: error.message || 'Failed to update property status'
+      error: error?.message || 'Failed to update property status',
+      message: error?.message || 'Failed to update property status'
     }
   }
 }
@@ -373,15 +549,13 @@ export async function moderateReview(reviewId: string, action: 'KEEP' | 'REMOVE'
         where: { id: reviewId },
         include: { property: true }
       })
-      try {
-        revalidatePath(`/pg/${review.propertyId}`)
-      } catch (_) {}
+      revalidatePath(`/pg/${review.propertyId}`)
       return { success: true, message: 'Review removed by Super Admin.' }
     }
 
     return { success: true, message: 'Review kept active.' }
   } catch (error: any) {
     console.error('moderateReview error:', error)
-    return { success: false, error: error.message || 'Failed to moderate review' }
+    return { success: false, error: error?.message || 'Failed to moderate review' }
   }
 }
