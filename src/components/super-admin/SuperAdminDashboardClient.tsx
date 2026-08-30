@@ -97,6 +97,28 @@ export default function SuperAdminDashboardClient({
     }, 4000)
   }
 
+  const [isSeeding, setIsSeeding] = useState(false)
+
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true)
+    try {
+      const res = await fetch('/api/seed')
+      const data = await res.json()
+      if (data.success) {
+        showToast('🎉 Demo Database seeded with PGs, Owners & Stays! Reloading...', 'success')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+      } else {
+        showToast(data.error || 'Seed failed', 'error')
+      }
+    } catch (e: any) {
+      showToast('Error seeding database', 'error')
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
   // Property Verification Handler (with optimistic UI update)
   const handleVerify = async (propertyId: string, status: 'PUBLISHED' | 'REJECTED' | 'SUSPENDED') => {
     setIsActing(propertyId)
@@ -190,7 +212,17 @@ export default function SuperAdminDashboardClient({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSeedDatabase}
+              disabled={isSeeding}
+              className="text-xs font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/40 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5 animate-spin" />
+              <span>{isSeeding ? 'Seeding Data...' : '⚡ Load Demo Data'}</span>
+            </button>
+
             <Link
               href="/"
               target="_blank"
@@ -200,7 +232,7 @@ export default function SuperAdminDashboardClient({
               <ExternalLink className="w-3 h-3" />
             </Link>
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800 text-xs">
-              <span className="text-slate-300 font-bold">{user?.name || 'Super Admin'}</span>
+              <span className="text-slate-300 font-bold">{user?.name || 'Pranjali (Super Admin)'}</span>
             </div>
           </div>
         </div>
