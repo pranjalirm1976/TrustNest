@@ -81,6 +81,15 @@ export default function SuperAdminDashboardClient({
   const [feedbackReason, setFeedbackReason] = useState('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  const safeStats = {
+    properties: { total: 0, published: 0, verified: 0, pending: 0, suspended: 0, rejected: 0, ...(stats?.properties || {}) },
+    owners: { total: 0, ...(stats?.owners || {}) },
+    residents: { total: 0, ...(stats?.residents || {}) },
+    subscriptions: { total: 0, active: 0, paidThisMonth: 0, pending: 0, failed: 0, monthlyRevenue: 0, planPrice: 2000, ...(stats?.subscriptions || {}) },
+    financials: { platformSubscriptionRevenue: 0, residentRentGrossVolume: 0, ...(stats?.financials || {}) },
+    complaints: { total: 0, open: 0, resolved: 0, escalated: 0, ...(stats?.complaints || {}) },
+  }
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
     setTimeout(() => {
@@ -204,7 +213,7 @@ export default function SuperAdminDashboardClient({
             { id: 'threeD', label: '3D Room Models', count: threeDCaptures.filter(c => c.status === 'PENDING_ADMIN_REVIEW' || c.status === 'READY_FOR_OWNER_REVIEW').length },
             { id: 'subscriptions', label: 'Payments & Subscriptions (DEMO)', count: subscriptions.filter(s => s.status === 'ACTIVE').length },
             { id: 'chats', label: 'In-App Chats Moderation', count: chatThreads.length },
-            { id: 'complaints', label: 'Global 24h SLA Complaints', count: stats.complaints.open },
+            { id: 'complaints', label: 'Global 24h SLA Complaints', count: safeStats.complaints.open },
             { id: 'reviews', label: 'Reviews Moderation', count: reviews.length },
           ].map(tab => (
             <button
@@ -252,26 +261,26 @@ export default function SuperAdminDashboardClient({
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white">
-                      ₹{stats.subscriptions.monthlyRevenue.toLocaleString('en-IN')}
+                      ₹{safeStats.subscriptions.monthlyRevenue.toLocaleString('en-IN')}
                     </span>
                     <span className="text-xs text-indigo-300 font-medium">/ month</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                    Derived exclusively from <strong>{stats.subscriptions.paidThisMonth} PG Owner subscriptions</strong> at <strong>₹{stats.subscriptions.planPrice}/month</strong>.
+                    Derived exclusively from <strong>{safeStats.subscriptions.paidThisMonth} PG Owner subscriptions</strong> at <strong>₹{safeStats.subscriptions.planPrice}/month</strong>.
                   </p>
 
                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-indigo-800/80 text-xs">
                     <div>
                       <span className="text-[10px] text-indigo-300 uppercase block">Active Plans</span>
-                      <span className="font-bold text-white">{stats.subscriptions.active}</span>
+                      <span className="font-bold text-white">{safeStats.subscriptions.active}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-indigo-300 uppercase block">Paid This Month</span>
-                      <span className="font-bold text-emerald-400">{stats.subscriptions.paidThisMonth}</span>
+                      <span className="font-bold text-emerald-400">{safeStats.subscriptions.paidThisMonth}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-indigo-300 uppercase block">Pending Invoices</span>
-                      <span className="font-bold text-amber-300">{stats.subscriptions.pending}</span>
+                      <span className="font-bold text-amber-300">{safeStats.subscriptions.pending}</span>
                     </div>
                   </div>
                 </div>
@@ -290,7 +299,7 @@ export default function SuperAdminDashboardClient({
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-slate-900">
-                      ₹{(stats.financials.residentRentGrossVolume || 476000).toLocaleString('en-IN')}
+                      ₹{(safeStats.financials.residentRentGrossVolume || 476000).toLocaleString('en-IN')}
                     </span>
                     <span className="text-xs text-slate-400 font-medium">/ month volume</span>
                   </div>
@@ -302,7 +311,7 @@ export default function SuperAdminDashboardClient({
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 text-xs mt-4">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase block">Total Verified Residents</span>
-                    <span className="font-bold text-slate-800">{stats.residents.total} Residents</span>
+                    <span className="font-bold text-slate-800">{safeStats.residents.total} Residents</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase block">Settlement Route</span>
@@ -321,11 +330,11 @@ export default function SuperAdminDashboardClient({
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total PGs</span>
                   <Building2 className="w-4 h-4 text-indigo-600" />
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono">{stats.properties.total}</div>
+                <div className="text-2xl font-black text-slate-900 font-mono">{safeStats.properties.total}</div>
                 <div className="flex items-center gap-2 mt-2 text-[11px]">
-                  <span className="text-emerald-700 font-bold">{stats.properties.published} Live</span>
+                  <span className="text-emerald-700 font-bold">{safeStats.properties.published} Live</span>
                   <span>•</span>
-                  <span className="text-amber-700 font-bold">{stats.properties.pending} Pending</span>
+                  <span className="text-amber-700 font-bold">{safeStats.properties.pending} Pending</span>
                 </div>
               </div>
 
@@ -334,9 +343,9 @@ export default function SuperAdminDashboardClient({
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">PG Owners</span>
                   <Users className="w-4 h-4 text-indigo-600" />
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono">{stats.owners.total}</div>
+                <div className="text-2xl font-black text-slate-900 font-mono">{safeStats.owners.total}</div>
                 <div className="text-[11px] text-slate-500 mt-2 font-medium">
-                  {stats.subscriptions.active} with Active Subscription
+                  {safeStats.subscriptions.active} with Active Subscription
                 </div>
               </div>
 
@@ -345,11 +354,11 @@ export default function SuperAdminDashboardClient({
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">24h SLA Complaints</span>
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono">{stats.complaints.total}</div>
+                <div className="text-2xl font-black text-slate-900 font-mono">{safeStats.complaints.total}</div>
                 <div className="flex items-center gap-2 mt-2 text-[11px]">
-                  <span className="text-emerald-700 font-bold">{stats.complaints.resolved} Resolved</span>
+                  <span className="text-emerald-700 font-bold">{safeStats.complaints.resolved} Resolved</span>
                   <span>•</span>
-                  <span className="text-red-700 font-bold">{stats.complaints.escalated} Escalated</span>
+                  <span className="text-red-700 font-bold">{safeStats.complaints.escalated} Escalated</span>
                 </div>
               </div>
 
@@ -358,7 +367,7 @@ export default function SuperAdminDashboardClient({
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verification Queue</span>
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono">{stats.properties.pending}</div>
+                <div className="text-2xl font-black text-slate-900 font-mono">{safeStats.properties.pending}</div>
                 <button
                   onClick={() => setActiveTab('queue')}
                   className="text-[11px] text-indigo-600 hover:text-indigo-700 font-bold mt-2 flex items-center gap-0.5 cursor-pointer"

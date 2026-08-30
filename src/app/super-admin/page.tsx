@@ -14,12 +14,16 @@ export const metadata: Metadata = {
 }
 
 export default async function SuperAdminPage() {
-  const session = await getServerSession(authOptions)
-  if (!session || (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
+  let session: any = null
+  try {
+    session = await getServerSession(authOptions)
+  } catch (_) {}
+
+  if (!session || (session.user?.role !== 'SUPER_ADMIN' && session.user?.role !== 'INSPECTOR')) {
     redirect('/admin/login')
   }
 
-  // Fetch platform stats
+  // Fetch platform stats safely
   const stats = await getSuperAdminPlatformStats()
 
   // Fetch all properties with owners and images
@@ -39,7 +43,7 @@ export default async function SuperAdminPage() {
       }
     },
     orderBy: { createdAt: 'desc' }
-  })
+  }).catch(() => [])
 
   // Fetch all subscriptions with owner details and latest invoices
   const subscriptions = await prisma.ownerSubscription.findMany({
@@ -52,7 +56,7 @@ export default async function SuperAdminPage() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50
-  })
+  }).catch(() => [])
 
   // Fetch recent platform complaints
   const complaints = await prisma.complaint.findMany({
@@ -62,7 +66,7 @@ export default async function SuperAdminPage() {
     },
     orderBy: { createdAt: 'desc' },
     take: 20
-  })
+  }).catch(() => [])
 
   // Fetch recent reviews
   const reviews = await prisma.propertyReview.findMany({
@@ -72,7 +76,7 @@ export default async function SuperAdminPage() {
     },
     orderBy: { createdAt: 'desc' },
     take: 20
-  })
+  }).catch(() => [])
 
   // Fetch 3D room captures
   const threeDCaptures = await prisma.room3DCapture.findMany({
@@ -82,7 +86,7 @@ export default async function SuperAdminPage() {
       room: { select: { id: true, roomNumber: true, sharingType: true, capacity: true } }
     },
     orderBy: { createdAt: 'desc' }
-  })
+  }).catch(() => [])
 
   // Fetch all platform payments (Demo bookings and subscriptions)
   const payments = await prisma.payment.findMany({
@@ -95,7 +99,7 @@ export default async function SuperAdminPage() {
     },
     orderBy: { createdAt: 'desc' },
     take: 100
-  })
+  }).catch(() => [])
 
   // Fetch all in-app chat threads for moderation
   const chatThreads = await prisma.chatThread.findMany({
@@ -112,9 +116,9 @@ export default async function SuperAdminPage() {
     },
     orderBy: { updatedAt: 'desc' },
     take: 50
-  })
+  }).catch(() => [])
 
-  const totalOwnersCount = await prisma.user.count({ where: { role: 'OWNER' } })
+  const totalOwnersCount = await prisma.user.count({ where: { role: 'OWNER' } }).catch(() => 0)
 
   return (
     <SuperAdminDashboardClient
