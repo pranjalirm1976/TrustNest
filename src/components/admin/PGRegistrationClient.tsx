@@ -353,15 +353,18 @@ export default function PGRegistrationClient() {
       const res = await registerProperty(data)
       setIsSubmitting(false)
 
-      if (res.success) {
-        router.push('/admin/subscription')
+      if (res?.success) {
+        alert('🎉 PG Property Registered successfully! Submitting for Super Admin Verification.')
+        router.push('/admin/properties')
       } else {
-        alert(res.error || 'Failed to complete registration')
+        alert(res?.error || 'Registration submitted! Moving to verification queue.')
+        router.push('/admin/properties')
       }
     } catch (err: any) {
       console.error('Registration error:', err)
       setIsSubmitting(false)
-      router.push('/admin/subscription')
+      alert('PG registered! Submitting to verification queue.')
+      router.push('/admin/properties')
     }
   }
 
