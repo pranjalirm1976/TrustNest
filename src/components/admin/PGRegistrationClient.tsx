@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { registerProperty } from '@/actions/property.actions'
@@ -164,6 +164,65 @@ export default function PGRegistrationClient() {
 
   const [active3DRoom, setActive3DRoom] = useState<any | null>(null)
   const [configured3DRooms, setConfigured3DRooms] = useState<Record<string, boolean>>({})
+  const [isDraftRestored, setIsDraftRestored] = useState(false)
+
+  // 1. Auto-restore form draft on page refresh
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('trustnest_pg_registration_draft')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.formData) {
+          setFormData(prev => ({ ...prev, ...parsed.formData }))
+        }
+        if (parsed.floors && Array.isArray(parsed.floors) && parsed.floors.length > 0) {
+          setFloors(parsed.floors)
+        }
+        if (parsed.rooms && Array.isArray(parsed.rooms) && parsed.rooms.length > 0) {
+          setRooms(parsed.rooms)
+        }
+        if (parsed.currentStep && typeof parsed.currentStep === 'number') {
+          setCurrentStep(parsed.currentStep)
+        }
+      }
+    } catch (e) {
+      console.warn('Could not restore draft:', e)
+    } finally {
+      setIsDraftRestored(true)
+    }
+  }, [])
+
+  // 2. Auto-save form draft whenever information is modified
+  useEffect(() => {
+    if (!isDraftRestored) return
+    try {
+      const draftPayload = {
+        formData,
+        floors: floors.map(f => ({
+          id: f.id,
+          level: f.level,
+          name: f.name,
+          facilities: f.facilities,
+          layoutPreviewUrl: f.layoutPreviewUrl || null
+        })),
+        rooms,
+        currentStep
+      }
+      localStorage.setItem('trustnest_pg_registration_draft', JSON.stringify(draftPayload))
+    } catch (e) {
+      // Ignore quota exceeded or storage disabled
+    }
+  }, [formData, floors, rooms, currentStep, isDraftRestored])
+
+  // Helper to clear draft
+  const handleClearDraft = () => {
+    if (confirm('Are you sure you want to reset all filled information?')) {
+      try {
+        localStorage.removeItem('trustnest_pg_registration_draft')
+      } catch (_) {}
+      window.location.reload()
+    }
+  }
 
   // Photo handlers
   const handlePhotoUpload = (key: string, file: File) => {
@@ -353,6 +412,10 @@ export default function PGRegistrationClient() {
       const res = await registerProperty(data)
       setIsSubmitting(false)
 
+      try {
+        localStorage.removeItem('trustnest_pg_registration_draft')
+      } catch (_) {}
+
       if (res?.success) {
         alert('🎉 PG Property Registered successfully! Submitting for Super Admin Verification.')
         router.push('/admin/properties')
@@ -363,6 +426,9 @@ export default function PGRegistrationClient() {
     } catch (err: any) {
       console.error('Registration error:', err)
       setIsSubmitting(false)
+      try {
+        localStorage.removeItem('trustnest_pg_registration_draft')
+      } catch (_) {}
       alert('PG registered! Submitting to verification queue.')
       router.push('/admin/properties')
     }
