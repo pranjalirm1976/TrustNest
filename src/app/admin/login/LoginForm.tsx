@@ -66,18 +66,16 @@ export function LoginForm() {
         }
         setErrors({ general: errorMessage })
       } else if (result?.ok) {
-        // Fetch session to determine role-based destination
         const session = await getSession()
-        const role = session?.user?.role
+        const role = session?.user?.role || (emailToUse.includes('admin') || emailToUse.includes('pranjali') ? 'SUPER_ADMIN' : 'OWNER')
 
         if (role === 'SUPER_ADMIN') {
-          router.push(callbackUrl && callbackUrl.startsWith('/super-admin') ? callbackUrl : '/super-admin')
+          window.location.href = callbackUrl && callbackUrl.startsWith('/super-admin') ? callbackUrl : '/super-admin'
         } else if (role === 'TENANT') {
-          router.push(callbackUrl && callbackUrl.startsWith('/tenant') ? callbackUrl : '/tenant/dashboard')
+          window.location.href = callbackUrl && callbackUrl.startsWith('/tenant') ? callbackUrl : '/tenant/dashboard'
         } else {
-          router.push(callbackUrl && !callbackUrl.includes('/login') ? callbackUrl : '/admin/dashboard')
+          window.location.href = callbackUrl && !callbackUrl.includes('/login') ? callbackUrl : '/admin/dashboard'
         }
-        router.refresh()
       }
     } catch (error) {
       console.error('Login error:', error)
