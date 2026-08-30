@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const session = await getServerSession(authOptions)
 
   // If unauthenticated (e.g. on /admin/login), render children without admin sidebar
-  if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR')) {
+  if (!session) {
     return <>{children}</>
   }
 
