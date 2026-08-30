@@ -1,5 +1,5 @@
 import { prisma } from '../src/lib/prisma'
-import { canCreateProperty, getBedIdentifier } from '../src/actions/property.actions'
+import { canCreateProperty, getBedIdentifier } from '../src/lib/property-utils'
 
 async function runRegressionSuite() {
   console.log('=== STARTING PRODUCTION REGRESSION TEST SUITE ===\n')
