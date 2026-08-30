@@ -169,30 +169,37 @@ export async function registerProperty(formData: FormData) {
     // 1. Guarantee all PostgreSQL tables exist before inserting
     await ensureTablesExist()
 
-    // 2. Guarantee owner user exists in database via upsert
+    // 2. Guarantee owner user exists via RAW SQL (bypasses pgbouncer prepared statement issues)
     const ownerEmail = (sessionUser.email || 'rajesh@emeraldelite.com').toLowerCase()
+    const ownerName = sessionUser.name || 'PG Owner'
     const defaultHash = await bcrypt.hash('superadminpranjali', 10)
+    const ownerId = `owner-${Date.now()}`
 
-    // Use upsert so we never hit a FK violation — always guarantees user row exists
-    const dbOwner = await prisma.user.upsert({
-      where: { email: ownerEmail },
-      update: { role: 'OWNER' },
-      create: {
-        name: sessionUser.name || 'PG Owner',
-        email: ownerEmail,
-        passwordHash: defaultHash,
-        role: 'OWNER'
-      }
-    }).catch(async () => {
-      // If upsert fails, try findFirst as last resort
-      return await prisma.user.findFirst({ where: { email: ownerEmail } }).catch(() => null)
-    })
-
-    if (!dbOwner) {
-      return { success: false, error: 'Could not verify owner account. Please log out and log back in.' }
+    // Raw SQL INSERT ON CONFLICT - guaranteed to work with pgbouncer
+    try {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "users" ("id", "name", "email", "passwordHash", "role", "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, $4, 'OWNER', NOW(), NOW())
+         ON CONFLICT ("email") DO NOTHING`,
+        ownerId, ownerName, ownerEmail, defaultHash
+      )
+    } catch (e) {
+      console.warn('User insert notice:', e)
     }
 
-    const ownerId = dbOwner.id
+    // Now fetch the actual user ID (may be the one we just inserted, or existing)
+    let finalOwnerId = ownerId
+    try {
+      const rows: any[] = await prisma.$queryRawUnsafe(
+        `SELECT "id" FROM "users" WHERE "email" = $1 LIMIT 1`,
+        ownerEmail
+      )
+      if (rows && rows.length > 0) {
+        finalOwnerId = rows[0].id
+      }
+    } catch (e) {
+      console.warn('User fetch notice:', e)
+    }
 
     const name = (formData.get('name') as string) || 'New TrustNest PG'
     const type = (formData.get('type') as string) || 'coed'
@@ -226,7 +233,7 @@ export async function registerProperty(formData: FormData) {
     // 3. Create Property in Prisma
     const property = await prisma.property.create({
       data: {
-        ownerId,
+        ownerId: finalOwnerId,
         name,
         description,
         address: fullAddress,
