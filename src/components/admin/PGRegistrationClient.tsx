@@ -412,25 +412,19 @@ export default function PGRegistrationClient() {
       const res = await registerProperty(data)
       setIsSubmitting(false)
 
-      try {
-        localStorage.removeItem('trustnest_pg_registration_draft')
-      } catch (_) {}
-
       if (res?.success) {
+        try {
+          localStorage.removeItem('trustnest_pg_registration_draft')
+        } catch (_) {}
         alert('🎉 PG Property Registered successfully! Submitting for Super Admin Verification.')
         router.push('/admin/properties')
       } else {
-        alert(res?.error || 'Registration submitted! Moving to verification queue.')
-        router.push('/admin/properties')
+        alert(res?.error || 'Unable to save the PG right now. Please try again.')
       }
     } catch (err: any) {
       console.error('Registration error:', err)
       setIsSubmitting(false)
-      try {
-        localStorage.removeItem('trustnest_pg_registration_draft')
-      } catch (_) {}
-      alert('PG registered! Submitting to verification queue.')
-      router.push('/admin/properties')
+      alert('Unable to save the PG right now. Please try again.')
     }
   }
 
