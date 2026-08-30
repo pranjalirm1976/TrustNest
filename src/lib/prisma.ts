@@ -13,7 +13,7 @@ function getSanitizedDatabaseUrl(): string | undefined {
       // Ensure @ in password is URI encoded as %40
       const password = rawPassword.includes('@') ? rawPassword.replace('@', '%40') : rawPassword
       const projectRef = match[2]
-      url = `postgresql://postgres.${projectRef}:${password}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require`
+      url = `postgresql://postgres.${projectRef}:${password}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require`
       process.env.DATABASE_URL = url
     }
   }
