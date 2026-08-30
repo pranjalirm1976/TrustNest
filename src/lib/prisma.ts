@@ -1,34 +1,37 @@
 import { PrismaClient } from '@prisma/client'
 
-function getSanitizedDatabaseUrl(): string {
-  let url = process.env.DATABASE_URL || ''
+// The Supabase connection pooler URL with pgbouncer=true to prevent
+// "prepared statement already exists" errors in serverless environments
+const SUPABASE_POOLER_URL = 
+  'postgresql://postgres.ouynlrtuwmbrzxlrmone:TrustNest2026%40DB@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1'
 
-  // If it's a SQLite file (local dev), leave it
-  if (!url || url.startsWith('file:')) {
-    // Return Supabase connection directly for production
-    return `postgresql://postgres.ouynlrtuwmbrzxlrmone:TrustNest2026%40DB@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1`
+function getDatabaseUrl(): string {
+  const envUrl = process.env.DATABASE_URL || ''
+
+  // If local dev using SQLite, always use Supabase pooler for real functionality
+  if (!envUrl || envUrl.startsWith('file:') || envUrl === '') {
+    return SUPABASE_POOLER_URL
   }
 
-  // If it's the old direct db.xxx.supabase.co:5432 format, rewrite to pooler
-  if (url.includes('db.') && url.includes('.supabase.co')) {
-    const match = url.match(/postgresql:\/\/postgres(?::([^@]+))?@db\.([^.]+)\.supabase\.co/i)
-    if (match) {
-      const rawPassword = match[1] || 'TrustNest2026%40DB'
-      const password = rawPassword.includes('@') ? rawPassword.replace('@', '%40') : rawPassword
-      const projectRef = match[2]
-      url = `postgresql://postgres.${projectRef}:${password}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1`
+  // If it's any Supabase URL, ensure pgbouncer=true is present
+  if (envUrl.includes('supabase')) {
+    // Already has pgbouncer - check if it's a direct connection (port 5432 without pooler)
+    if (envUrl.includes('db.') && envUrl.includes('.supabase.co')) {
+      // Direct connection - rewrite to pooler
+      return SUPABASE_POOLER_URL
     }
+    // Already using pooler - ensure pgbouncer=true param is there
+    if (!envUrl.includes('pgbouncer=true')) {
+      const separator = envUrl.includes('?') ? '&' : '?'
+      return envUrl + separator + 'pgbouncer=true&connection_limit=1'
+    }
+    return envUrl
   }
 
-  // If already using pooler but missing pgbouncer param, add it
-  if (url.includes('pooler.supabase.com') && !url.includes('pgbouncer=true')) {
-    url = url + (url.includes('?') ? '&' : '?') + 'pgbouncer=true&connection_limit=1'
-  }
-
-  return url
+  return envUrl
 }
 
-const resolvedUrl = getSanitizedDatabaseUrl()
+const dbUrl = getDatabaseUrl()
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -38,9 +41,9 @@ export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     datasources: {
-      db: { url: resolvedUrl }
+      db: { url: dbUrl }
     },
-    log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
+    log: ['error'],
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
