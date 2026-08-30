@@ -169,37 +169,31 @@ export async function registerProperty(formData: FormData) {
     // 1. Guarantee all PostgreSQL tables exist before inserting
     await ensureTablesExist()
 
-    // 2. Guarantee owner user exists via RAW SQL (bypasses pgbouncer prepared statement issues)
+    // 2. Guarantee owner user exists in database
     const ownerEmail = (sessionUser.email || 'rajesh@emeraldelite.com').toLowerCase()
-    const ownerName = sessionUser.name || 'PG Owner'
     const defaultHash = await bcrypt.hash('superadminpranjali', 10)
-    const ownerId = `owner-${Date.now()}`
 
-    // Raw SQL INSERT ON CONFLICT - guaranteed to work with pgbouncer
-    try {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "users" ("id", "name", "email", "passwordHash", "role", "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, $4, 'OWNER', NOW(), NOW())
-         ON CONFLICT ("email") DO NOTHING`,
-        ownerId, ownerName, ownerEmail, defaultHash
-      )
-    } catch (e) {
-      console.warn('User insert notice:', e)
+    let dbOwner = await prisma.user.findFirst({ where: { email: ownerEmail } }).catch(() => null)
+
+    if (!dbOwner) {
+      dbOwner = await prisma.user.create({
+        data: {
+          name: sessionUser.name || 'PG Owner',
+          email: ownerEmail,
+          passwordHash: defaultHash,
+          role: 'OWNER'
+        }
+      }).catch(async () => {
+        // Another request may have created it concurrently — fetch it
+        return await prisma.user.findFirst({ where: { email: ownerEmail } }).catch(() => null)
+      })
     }
 
-    // Now fetch the actual user ID (may be the one we just inserted, or existing)
-    let finalOwnerId = ownerId
-    try {
-      const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT "id" FROM "users" WHERE "email" = $1 LIMIT 1`,
-        ownerEmail
-      )
-      if (rows && rows.length > 0) {
-        finalOwnerId = rows[0].id
-      }
-    } catch (e) {
-      console.warn('User fetch notice:', e)
+    if (!dbOwner) {
+      return { success: false, error: 'Could not verify owner account. Please log out and log in again.' }
     }
+
+    const finalOwnerId = dbOwner.id
 
     const name = (formData.get('name') as string) || 'New TrustNest PG'
     const type = (formData.get('type') as string) || 'coed'
@@ -222,102 +216,211 @@ export async function registerProperty(formData: FormData) {
       } catch (e) {}
     }
 
-    const genderMapping: Record<string, string> = { boys: 'MALE', girls: 'FEMALE', coed: 'UNISEX' }
+    const genderMapping: Record<string, string> = {
+      boys: 'MALE',
+      girls: 'FEMALE',
+      coed: 'UNISEX'
+    }
     const gender = genderMapping[type.toLowerCase()] || 'UNISEX'
     const fullAddress = `${address}, ${area}, ${city} - ${pincode}`
-    const propertyId = `prop-${Date.now()}`
 
-    // 3. Create Property via RAW SQL only (no prepared statements)
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "properties" ("id","ownerId","name","description","address","latitude","longitude","priceFrom","gender","trustScore","status","createdAt","updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
-      propertyId, finalOwnerId, name, description || '', fullAddress, lat, lng, priceFrom, gender, 4.8, 'PENDING_VERIFICATION'
-    )
+    // 3. Create Property in Prisma
+    const property = await prisma.property.create({
+      data: {
+        ownerId: finalOwnerId,
+        name,
+        description,
+        address: fullAddress,
+        latitude: lat,
+        longitude: lng,
+        priceFrom,
+        gender,
+        trustScore: 4.8,
+        status: 'PENDING_VERIFICATION',
+      }
+    })
 
-    // 4. Default cover image
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "property_images" ("id","propertyId","url","altText","category","isCover","createdAt") VALUES ($1,$2,$3,$4,$5,$6,NOW())`,
-      `img-${Date.now()}`, propertyId,
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
-      `${name} Exterior`, 'exterior', true
-    ).catch(() => null)
+    // 4. Upload and Save Categorized Property Photos
+    const photoCategories = [
+      { key: 'photo_exterior', category: 'exterior', isCover: true, alt: `${name} Exterior` },
+      { key: 'photo_entrance', category: 'lobby', isCover: false, alt: `${name} Entrance & Lobby` },
+      { key: 'photo_common', category: 'common', isCover: false, alt: `${name} Common Area` },
+      { key: 'photo_rooms', category: 'bedroom', isCover: false, alt: `${name} Bedroom Layout` },
+      { key: 'photo_dining', category: 'dining', isCover: false, alt: `${name} Dining / Canteen` },
+      { key: 'photo_facilities', category: 'facilities', isCover: false, alt: `${name} Amenities` },
+    ]
 
-    // 5. Amenities
-    for (const amenity of amenitiesList) {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "amenities" ("id","propertyId","name","isAvailable") VALUES ($1,$2,$3,$4)`,
-        `am-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, propertyId, amenity, true
-      ).catch(() => null)
+    let hasCover = false
+    for (const item of photoCategories) {
+      const file = formData.get(item.key) as File | null
+      if (file && file.size > 0) {
+        try {
+          const url = await uploadLocalFile(file)
+          await prisma.propertyImage.create({
+            data: {
+              propertyId: property.id,
+              url,
+              category: item.category,
+              altText: item.alt,
+              isCover: item.isCover && !hasCover,
+            }
+          }).catch(() => null)
+          if (item.isCover) hasCover = true
+        } catch (err) {
+          console.warn(`Failed to upload ${item.key}:`, err)
+        }
+      }
     }
 
-    // 6. Floors
-    let parsedFloors: { level: number; name: string }[] = [
-      { level: 0, name: 'Ground Floor' },
-      { level: 1, name: '1st Floor' },
+    // Fallback default cover if none uploaded
+    if (!hasCover) {
+      await prisma.propertyImage.create({
+        data: {
+          propertyId: property.id,
+          url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
+          category: 'exterior',
+          altText: `${name} Exterior View`,
+          isCover: true,
+        }
+      }).catch(() => null)
+    }
+
+    // 5. Process Floors and Floor Architectural Layouts
+    let parsedFloors: { level: number; name: string; facilities?: string[] }[] = [
+      { level: 0, name: 'Ground Floor', facilities: ['Parking', 'Reception', 'Lobby'] },
+      { level: 1, name: '1st Floor', facilities: ['Rooms', 'Bathrooms', 'Balcony'] },
     ]
+
     if (floorsJson) {
       try {
-        const cf = JSON.parse(floorsJson)
-        if (Array.isArray(cf) && cf.length > 0) parsedFloors = cf
-      } catch (_) {}
+        const customFloors = JSON.parse(floorsJson)
+        if (Array.isArray(customFloors) && customFloors.length > 0) {
+          parsedFloors = customFloors
+        }
+      } catch (e) {}
     }
 
-    const floorIdMap = new Map<number, string>()
+    const createdFloorsMap = new Map<number, string>() // level -> floorId
+
     for (const fl of parsedFloors) {
-      const floorId = `fl-${Date.now()}-${fl.level}-${Math.random().toString(36).slice(2, 5)}`
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "floors" ("id","propertyId","level","name","createdAt","updatedAt") VALUES ($1,$2,$3,$4,NOW(),NOW())`,
-        floorId, propertyId, fl.level, fl.name
-      ).catch(() => null)
-      floorIdMap.set(fl.level, floorId)
+      let floorLayoutUrl: string | null = null
+      const layoutFile = (formData.get(`floor_layout_${fl.level}`) || formData.get(`floor_layout_${fl.name}`)) as File | null
+      if (layoutFile && layoutFile.size > 0) {
+        try {
+          floorLayoutUrl = await uploadLocalFile(layoutFile)
+        } catch (err) {
+          console.warn(`Floor layout upload failed for level ${fl.level}:`, err)
+        }
+      }
+
+      const createdFloor = await prisma.floor.create({
+        data: {
+          propertyId: property.id,
+          level: fl.level,
+          name: fl.name,
+          layoutUrl: floorLayoutUrl,
+        }
+      }).catch(() => null)
+
+      if (createdFloor) {
+        createdFloorsMap.set(fl.level, createdFloor.id)
+      }
     }
 
-    // 7. Rooms & Beds
+    // 6. Process Rooms and Beds
     if (roomsJson) {
       try {
         const customRooms = JSON.parse(roomsJson)
-        if (Array.isArray(customRooms)) {
+        if (Array.isArray(customRooms) && customRooms.length > 0) {
           for (const rm of customRooms) {
-            let floorId = floorIdMap.get(rm.floorLevel)
-            if (!floorId && floorIdMap.size > 0) floorId = Array.from(floorIdMap.values())[0]
-            if (!floorId) continue
-            const roomId = `rm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-            await prisma.$executeRawUnsafe(
-              `INSERT INTO "rooms" ("id","floorId","roomNumber","capacity","sharingType","pricePerBed","hasWashroom","hasAc","hasBalcony","createdAt","updatedAt")
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())`,
-              roomId, floorId, rm.roomNumber || '101', rm.capacity || 2,
-              rm.sharingType || 'DOUBLE', rm.pricePerBed || priceFrom,
-              Boolean(rm.hasWashroom), Boolean(rm.hasAc), Boolean(rm.hasBalcony)
-            ).catch(() => null)
+            let floorId = createdFloorsMap.get(rm.floorLevel)
+            if (!floorId && createdFloorsMap.size > 0) {
+              floorId = Array.from(createdFloorsMap.values())[0]
+            }
 
-            const bedCount = rm.capacity || 2
-            for (let i = 0; i < bedCount; i++) {
-              await prisma.$executeRawUnsafe(
-                `INSERT INTO "beds" ("id","roomId","identifier","status","isTrustNestInventory","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,NOW(),NOW())`,
-                `bed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, roomId,
-                String.fromCharCode(65 + i), 'VACANT', true
-              ).catch(() => null)
+            if (floorId) {
+              const createdRoom = await prisma.room.create({
+                data: {
+                  floorId,
+                  roomNumber: rm.roomNumber || '101',
+                  capacity: rm.capacity || 2,
+                  sharingType: rm.sharingType || 'DOUBLE',
+                  pricePerBed: rm.pricePerBed || priceFrom,
+                  hasWashroom: Boolean(rm.hasWashroom),
+                  hasAc: Boolean(rm.hasAc),
+                  hasBalcony: Boolean(rm.hasBalcony),
+                }
+              }).catch(() => null)
+
+              if (createdRoom) {
+                const bedCount = rm.capacity || 2
+                for (let i = 0; i < bedCount; i++) {
+                  const identifier = String.fromCharCode(65 + i)
+                  await prisma.bed.create({
+                    data: {
+                      roomId: createdRoom.id,
+                      identifier,
+                      status: 'VACANT',
+                      isTrustNestInventory: true,
+                    }
+                  }).catch(() => null)
+                }
+              }
             }
           }
         }
-      } catch (_) {}
+      } catch (roomErr) {
+        console.warn('Rooms processing notice:', roomErr)
+      }
     }
+
+    // 7. Amenities
+    if (amenitiesList.length > 0) {
+      for (const item of amenitiesList) {
+        await prisma.amenity.create({
+          data: {
+            propertyId: property.id,
+            name: item,
+            isAvailable: true,
+          }
+        }).catch(() => null)
+      }
+    }
+
+    // 8. Notify Super Admins
+    try {
+      const superAdmins = await prisma.user.findMany({
+        where: { role: 'SUPER_ADMIN' }
+      }).catch(() => [])
+
+      for (const admin of superAdmins) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: `🔔 New PG Verification Request: ${property.name}`,
+            message: `PG: ${property.name} | Location: ${address} | Status: PENDING_VERIFICATION.`,
+            type: 'SYSTEM'
+          }
+        }).catch(() => null)
+      }
+    } catch (_) {}
 
     try {
       revalidatePath('/')
       revalidatePath('/search')
       revalidatePath('/admin/properties')
       revalidatePath('/super-admin')
+      revalidatePath('/admin/verification')
     } catch (_) {}
 
-    return {
-      success: true,
-      propertyId,
-      message: 'Property successfully submitted for TrustNest Super Admin verification!'
+    return { 
+      success: true, 
+      propertyId: property.id,
+      message: 'Property successfully submitted for TrustNest Super Admin verification!' 
     }
   } catch (error: any) {
     console.error('Property registration error:', error)
-    return {
+    return { 
       success: false, 
       error: error.message || 'Failed to register property' 
     }

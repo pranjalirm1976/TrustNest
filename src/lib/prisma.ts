@@ -1,34 +1,28 @@
 import { PrismaClient } from '@prisma/client'
 
-// The Supabase connection pooler URL with pgbouncer=true to prevent
-// "prepared statement already exists" errors in serverless environments
-const SUPABASE_POOLER_URL = 
-  'postgresql://postgres.ouynlrtuwmbrzxlrmone:TrustNest2026%40DB@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1'
+// Supabase SESSION pooler (port 5432) — supports prepared statements unlike transaction pooler (6543)
+// Session pooler is safe for serverless and supports all Prisma query types
+const SUPABASE_SESSION_POOLER_URL =
+  'postgresql://postgres.ouynlrtuwmbrzxlrmone:TrustNest2026%40DB@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require'
 
 function getDatabaseUrl(): string {
   const envUrl = process.env.DATABASE_URL || ''
 
-  // If local dev using SQLite, always use Supabase pooler for real functionality
-  if (!envUrl || envUrl.startsWith('file:') || envUrl === '') {
-    return SUPABASE_POOLER_URL
+  // Always use Supabase session pooler — handles SQLite dev env and any misconfigured URL
+  if (!envUrl || envUrl.startsWith('file:') || !envUrl.includes('supabase')) {
+    return SUPABASE_SESSION_POOLER_URL
   }
 
-  // If it's any Supabase URL, ensure pgbouncer=true is present
-  if (envUrl.includes('supabase')) {
-    // Already has pgbouncer - check if it's a direct connection (port 5432 without pooler)
-    if (envUrl.includes('db.') && envUrl.includes('.supabase.co')) {
-      // Direct connection - rewrite to pooler
-      return SUPABASE_POOLER_URL
-    }
-    // Already using pooler - ensure pgbouncer=true param is there
-    if (!envUrl.includes('pgbouncer=true')) {
-      const separator = envUrl.includes('?') ? '&' : '?'
-      return envUrl + separator + 'pgbouncer=true&connection_limit=1'
-    }
-    return envUrl
-  }
+  // Already has a supabase pooler URL — strip pgbouncer param if present (not needed for session mode)
+  const cleaned = envUrl
+    .replace('&pgbouncer=true', '')
+    .replace('?pgbouncer=true&', '?')
+    .replace('?pgbouncer=true', '')
+    .replace('&connection_limit=1', '')
+    .replace('?connection_limit=1', '')
 
-  return envUrl
+  // Ensure we're on session pooler port 5432, not transaction pooler 6543
+  return cleaned.replace(':6543/', ':5432/')
 }
 
 const dbUrl = getDatabaseUrl()
