@@ -12,15 +12,15 @@ export const metadata: Metadata = {
 
 export default async function PaymentsPage() {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR')) {
+  if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
     redirect('/admin/login')
   }
 
-  const isInspector = session.user.role === 'INSPECTOR'
+  const isInspectorOrSuper = session.user.role === 'INSPECTOR' || session.user.role === 'SUPER_ADMIN'
 
   // Fetch properties and their full hierarchy
   const properties = await prisma.property.findMany({
-    where: isInspector ? {} : { ownerId: session.user.id },
+    where: isInspectorOrSuper ? {} : { ownerId: session.user.id },
     include: {
       floors: {
         include: {
@@ -49,7 +49,7 @@ export default async function PaymentsPage() {
 
   // Fetch Booking Payments
   const bookingPayments = await prisma.payment.findMany({
-    where: isInspector ? {} : {
+    where: isInspectorOrSuper ? {} : {
       booking: {
         property: {
           ownerId: session.user.id
@@ -69,7 +69,7 @@ export default async function PaymentsPage() {
 
   // Fetch Rent Payments
   const rentPayments = await prisma.rentPayment.findMany({
-    where: isInspector ? {} : {
+    where: isInspectorOrSuper ? {} : {
       stay: {
         bed: {
           room: {

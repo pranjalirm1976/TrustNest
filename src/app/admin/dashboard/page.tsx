@@ -20,16 +20,15 @@ export default async function AdminDashboard() {
     redirect('/admin/login')
   }
 
-  if (session.user.role === 'SUPER_ADMIN') {
-    redirect('/super-admin')
-  }
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN' || session.user.role === 'INSPECTOR'
+  const isOwner = session.user.role === 'OWNER' || session.user.role === 'PG_OWNER'
 
-  if (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR') {
+  if (!isSuperAdmin && !isOwner) {
     redirect('/unauthorized')
   }
 
   const properties = await prisma.property.findMany({
-    where: {
+    where: isSuperAdmin ? {} : {
       ownerId: session.user.id,
     },
     select: {

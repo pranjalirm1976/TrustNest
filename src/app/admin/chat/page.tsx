@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function AdminChatPage() {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR')) {
+  if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
     redirect('/admin/login')
   }
 

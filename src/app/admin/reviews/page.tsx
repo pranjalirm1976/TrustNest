@@ -14,9 +14,10 @@ export default async function ReviewsPage() {
   const session = await getServerSession(authOptions)
   let initialReviews: any[] = []
 
-  if (session && session.user.role === 'OWNER') {
+  if (session && (session.user.role === 'OWNER' || session.user.role === 'PG_OWNER' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'INSPECTOR')) {
+    const isSuperAdmin = session.user.role === 'SUPER_ADMIN' || session.user.role === 'INSPECTOR'
     const properties = await prisma.property.findMany({
-      where: { ownerId: session.user.id },
+      where: isSuperAdmin ? {} : { ownerId: session.user.id },
       select: { id: true }
     })
     const propertyIds = properties.map(p => p.id)
