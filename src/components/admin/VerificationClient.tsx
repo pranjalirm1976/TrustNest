@@ -70,10 +70,14 @@ export default function VerificationClient({ properties = [] }: VerificationClie
     if (!activeProperty) return
     setIsUpdating(true)
     try {
-      await verifyProperty(activeProperty.id, newStatus as any)
-      window.location.reload()
+      const res = await verifyProperty(activeProperty.id, newStatus as any)
+      if (res?.success) {
+        window.location.reload()
+      } else {
+        alert(res?.error || res?.message || 'Failed to update status')
+      }
     } catch (e: any) {
-      alert(e.message || 'Failed to update status')
+      alert(e?.message || 'Failed to update status')
     } finally {
       setIsUpdating(false)
     }

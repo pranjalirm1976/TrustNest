@@ -79,19 +79,28 @@ export default function SuperAdminDashboardClient({
   const [previewCapture, setPreviewCapture] = useState<any | null>(null)
   const [feedbackModal, setFeedbackModal] = useState<{ captureId: string; type: 'REJECT' | 'RECAPTURE' } | null>(null)
   const [feedbackReason, setFeedbackReason] = useState('')
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => {
+      setToast(null)
+    }, 4000)
+  }
 
   // Property Verification Handler
   const handleVerify = async (propertyId: string, status: 'PUBLISHED' | 'REJECTED' | 'SUSPENDED') => {
     setIsActing(propertyId)
     try {
       const res = await verifyProperty(propertyId, status)
-      if (res.success) {
+      if (res?.success) {
         setProperties(prev => prev.map(p => p.id === propertyId ? { ...p, status } : p))
+        showToast(status === 'PUBLISHED' ? '🎉 PG Approved & Published successfully!' : `PG status updated to ${status}.`, 'success')
       } else {
-        alert('Action failed: ' + res.message)
+        showToast(res?.error || res?.message || 'Failed to update property status', 'error')
       }
     } catch (e: any) {
-      alert('Error: ' + e.message)
+      showToast(e?.message || 'Failed to update status', 'error')
     } finally {
       setIsActing(null)
     }
@@ -100,11 +109,16 @@ export default function SuperAdminDashboardClient({
   const handleModerateReview = async (reviewId: string, action: 'KEEP' | 'REMOVE') => {
     try {
       const res = await moderateReview(reviewId, action)
-      if (res.success && action === 'REMOVE') {
-        setReviews(prev => prev.filter(r => r.id !== reviewId))
+      if (res?.success) {
+        if (action === 'REMOVE') {
+          setReviews(prev => prev.filter(r => r.id !== reviewId))
+        }
+        showToast(`Review action "${action}" completed.`, 'success')
+      } else {
+        showToast(res?.error || 'Failed to moderate review', 'error')
       }
     } catch (e: any) {
-      alert(e.message)
+      showToast(e?.message || 'Error moderating review', 'error')
     }
   }
 
@@ -113,16 +127,17 @@ export default function SuperAdminDashboardClient({
     setIsActing(captureId)
     try {
       const res = await superAdminReview3DModel(captureId, decision, reason)
-      if (res.success) {
+      if (res?.success) {
         const newStatus = decision === 'APPROVE' ? 'PUBLISHED' : decision === 'RECAPTURE' ? 'NEEDS_RECAPTURE' : 'REJECTED'
         setThreeDCaptures(prev => prev.map(c => c.id === captureId ? { ...c, status: newStatus, adminApproved: decision === 'APPROVE' } : c))
         setFeedbackModal(null)
         setFeedbackReason('')
+        showToast(`3D capture updated to ${decision}`, 'success')
       } else {
-        alert(res.error)
+        showToast(res?.error || 'Failed to update 3D capture', 'error')
       }
     } catch (e: any) {
-      alert(e.message)
+      showToast(e?.message || 'Error updating 3D capture', 'error')
     } finally {
       setIsActing(null)
     }
@@ -138,8 +153,23 @@ export default function SuperAdminDashboardClient({
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col relative">
       
+      {/* Floating Toast Notification Banner */}
+      {toast && (
+        <div className="fixed top-20 right-6 z-50 animate-bounce">
+          <div className={`px-5 py-3 rounded-xl shadow-2xl border flex items-center gap-3 text-sm font-bold ${
+            toast.type === 'success' 
+              ? 'bg-emerald-900 text-emerald-100 border-emerald-500/50' 
+              : 'bg-red-900 text-red-100 border-red-500/50'
+          }`}>
+            <span>{toast.type === 'success' ? '✓' : '⚠️'}</span>
+            <span>{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 text-xs opacity-70 hover:opacity-100">✕</button>
+          </div>
+        </div>
+      )}
+
       {/* Top Super Admin Platform Header */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
