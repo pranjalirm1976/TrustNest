@@ -5,118 +5,140 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { uploadLocalFile } from '@/lib/upload'
-import { getEmailService } from '@/services/email'
 import bcrypt from 'bcryptjs'
 
 /**
  * Ensures all PostgreSQL database tables exist before performing queries
  */
 async function ensureTablesExist() {
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "users" (
-        "id" TEXT PRIMARY KEY,
-        "name" TEXT NOT NULL,
-        "email" TEXT UNIQUE NOT NULL,
-        "passwordHash" TEXT NOT NULL,
-        "role" TEXT NOT NULL DEFAULT 'TENANT',
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS "users" (
+      "id" TEXT PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "email" TEXT UNIQUE NOT NULL,
+      "passwordHash" TEXT NOT NULL,
+      "role" TEXT NOT NULL DEFAULT 'TENANT',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "properties" (
+      "id" TEXT PRIMARY KEY,
+      "ownerId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "description" TEXT,
+      "address" TEXT NOT NULL,
+      "latitude" DOUBLE PRECISION NOT NULL DEFAULT 18.5913,
+      "longitude" DOUBLE PRECISION NOT NULL DEFAULT 73.7389,
+      "priceFrom" DOUBLE PRECISION NOT NULL DEFAULT 8500,
+      "gender" TEXT NOT NULL DEFAULT 'UNISEX',
+      "trustScore" DOUBLE PRECISION NOT NULL DEFAULT 5.0,
+      "status" TEXT NOT NULL DEFAULT 'PUBLISHED',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "property_images" (
+      "id" TEXT PRIMARY KEY,
+      "propertyId" TEXT NOT NULL,
+      "url" TEXT NOT NULL,
+      "altText" TEXT,
+      "category" TEXT DEFAULT 'general',
+      "isCover" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "floors" (
+      "id" TEXT PRIMARY KEY,
+      "propertyId" TEXT NOT NULL,
+      "level" INTEGER NOT NULL,
+      "name" TEXT NOT NULL,
+      "layoutUrl" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "rooms" (
+      "id" TEXT PRIMARY KEY,
+      "floorId" TEXT NOT NULL,
+      "roomNumber" TEXT NOT NULL,
+      "capacity" INTEGER NOT NULL DEFAULT 2,
+      "sharingType" TEXT NOT NULL DEFAULT 'DOUBLE',
+      "pricePerBed" DOUBLE PRECISION NOT NULL DEFAULT 8500,
+      "hasWashroom" BOOLEAN NOT NULL DEFAULT true,
+      "hasAc" BOOLEAN NOT NULL DEFAULT false,
+      "hasBalcony" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "beds" (
+      "id" TEXT PRIMARY KEY,
+      "roomId" TEXT NOT NULL,
+      "identifier" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'VACANT',
+      "isTrustNestInventory" BOOLEAN NOT NULL DEFAULT true,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "amenities" (
+      "id" TEXT PRIMARY KEY,
+      "propertyId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "isAvailable" BOOLEAN NOT NULL DEFAULT true
+    );`,
+    `CREATE TABLE IF NOT EXISTS "owner_subscriptions" (
+      "id" TEXT PRIMARY KEY,
+      "ownerId" TEXT NOT NULL,
+      "propertyId" TEXT,
+      "planName" TEXT NOT NULL DEFAULT 'TRUSTNEST_GROWTH',
+      "amount" DOUBLE PRECISION NOT NULL DEFAULT 2000,
+      "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+      "currentPeriodStart" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+      "cfSubscriptionId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "subscription_invoices" (
+      "id" TEXT PRIMARY KEY,
+      "subscriptionId" TEXT NOT NULL,
+      "amount" DOUBLE PRECISION NOT NULL,
+      "cfOrderId" TEXT,
+      "cfPaymentId" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'PAID',
+      "paidAt" TIMESTAMP(3),
+      "receiptUrl" TEXT,
+      "billingMonth" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "complaints" (
+      "id" TEXT PRIMARY KEY,
+      "propertyId" TEXT NOT NULL,
+      "tenantId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "description" TEXT NOT NULL,
+      "category" TEXT NOT NULL DEFAULT 'PLUMBING',
+      "status" TEXT NOT NULL DEFAULT 'OPEN',
+      "severity" TEXT NOT NULL DEFAULT 'MEDIUM',
+      "slaDeadline" TIMESTAMP(3) NOT NULL,
+      "resolvedAt" TIMESTAMP(3),
+      "isEscalated" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`,
+    `CREATE TABLE IF NOT EXISTS "notifications" (
+      "id" TEXT PRIMARY KEY,
+      "userId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "message" TEXT NOT NULL,
+      "type" TEXT NOT NULL DEFAULT 'SYSTEM',
+      "isRead" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`
+  ]
 
-      CREATE TABLE IF NOT EXISTS "properties" (
-        "id" TEXT PRIMARY KEY,
-        "ownerId" TEXT NOT NULL,
-        "name" TEXT NOT NULL,
-        "description" TEXT,
-        "address" TEXT NOT NULL,
-        "latitude" DOUBLE PRECISION NOT NULL DEFAULT 18.5913,
-        "longitude" DOUBLE PRECISION NOT NULL DEFAULT 73.7389,
-        "priceFrom" DOUBLE PRECISION NOT NULL DEFAULT 8500,
-        "gender" TEXT NOT NULL DEFAULT 'UNISEX',
-        "trustScore" DOUBLE PRECISION NOT NULL DEFAULT 5.0,
-        "status" TEXT NOT NULL DEFAULT 'PUBLISHED',
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "property_images" (
-        "id" TEXT PRIMARY KEY,
-        "propertyId" TEXT NOT NULL,
-        "url" TEXT NOT NULL,
-        "altText" TEXT,
-        "category" TEXT DEFAULT 'general',
-        "isCover" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "floors" (
-        "id" TEXT PRIMARY KEY,
-        "propertyId" TEXT NOT NULL,
-        "level" INTEGER NOT NULL,
-        "name" TEXT NOT NULL,
-        "layoutUrl" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "rooms" (
-        "id" TEXT PRIMARY KEY,
-        "floorId" TEXT NOT NULL,
-        "roomNumber" TEXT NOT NULL,
-        "capacity" INTEGER NOT NULL DEFAULT 2,
-        "sharingType" TEXT NOT NULL DEFAULT 'DOUBLE',
-        "price" DOUBLE PRECISION NOT NULL DEFAULT 8500,
-        "hasWashroom" BOOLEAN NOT NULL DEFAULT true,
-        "hasAc" BOOLEAN NOT NULL DEFAULT false,
-        "hasBalcony" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "beds" (
-        "id" TEXT PRIMARY KEY,
-        "roomId" TEXT NOT NULL,
-        "identifier" TEXT NOT NULL,
-        "status" TEXT NOT NULL DEFAULT 'VACANT',
-        "isTrustNestInventory" BOOLEAN NOT NULL DEFAULT true,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "amenities" (
-        "id" TEXT PRIMARY KEY,
-        "propertyId" TEXT NOT NULL,
-        "name" TEXT NOT NULL,
-        "isAvailable" BOOLEAN NOT NULL DEFAULT true
-      );
-
-      CREATE TABLE IF NOT EXISTS "owner_subscriptions" (
-        "id" TEXT PRIMARY KEY,
-        "ownerId" TEXT NOT NULL,
-        "propertyId" TEXT,
-        "planName" TEXT NOT NULL DEFAULT 'TRUSTNEST_GROWTH',
-        "amount" DOUBLE PRECISION NOT NULL DEFAULT 2000,
-        "status" TEXT NOT NULL DEFAULT 'ACTIVE',
-        "currentPeriodStart" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
-        "cfSubscriptionId" TEXT,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS "notifications" (
-        "id" TEXT PRIMARY KEY,
-        "userId" TEXT NOT NULL,
-        "title" TEXT NOT NULL,
-        "message" TEXT NOT NULL,
-        "type" TEXT NOT NULL DEFAULT 'SYSTEM',
-        "isRead" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `)
-  } catch (err) {
-    console.warn('[Prisma] Table creation notice:', err)
+  for (const sql of statements) {
+    try {
+      await prisma.$executeRawUnsafe(sql)
+    } catch (err) {
+      console.warn('[Table Init SQL Warning]:', err)
+    }
   }
 }
 
@@ -142,10 +164,10 @@ export async function registerProperty(formData: FormData) {
       role: 'OWNER' as any
     }
 
-    // Guarantee all PostgreSQL tables exist before inserting
+    // 1. Guarantee all PostgreSQL tables exist before inserting
     await ensureTablesExist()
 
-    // Ensure owner user exists in database
+    // 2. Ensure owner user exists in database
     const ownerEmail = (sessionUser.email || 'rajesh@emeraldelite.com').toLowerCase()
     let dbOwner = await prisma.user.findFirst({
       where: { email: ownerEmail }
@@ -195,7 +217,7 @@ export async function registerProperty(formData: FormData) {
     const gender = genderMapping[type.toLowerCase()] || 'UNISEX'
     const fullAddress = `${address}, ${area}, ${city} - ${pincode}`
 
-    // 1. Create Property in Prisma
+    // 3. Create Property in Prisma
     const property = await prisma.property.create({
       data: {
         ownerId,
@@ -211,7 +233,7 @@ export async function registerProperty(formData: FormData) {
       }
     })
 
-    // 2. Upload and Save Categorized Property Photos
+    // 4. Upload and Save Categorized Property Photos
     const photoCategories = [
       { key: 'photo_exterior', category: 'exterior', isCover: true, alt: `${name} Exterior` },
       { key: 'photo_entrance', category: 'lobby', isCover: false, alt: `${name} Entrance & Lobby` },
@@ -256,7 +278,7 @@ export async function registerProperty(formData: FormData) {
       }).catch(() => null)
     }
 
-    // 3. Process Floors and Floor Architectural Layouts
+    // 5. Process Floors and Floor Architectural Layouts
     let parsedFloors: { level: number; name: string; facilities?: string[] }[] = [
       { level: 0, name: 'Ground Floor', facilities: ['Parking', 'Reception', 'Lobby'] },
       { level: 1, name: '1st Floor', facilities: ['Rooms', 'Bathrooms', 'Balcony'] },
@@ -298,7 +320,7 @@ export async function registerProperty(formData: FormData) {
       }
     }
 
-    // 4. Process Rooms and Beds
+    // 6. Process Rooms and Beds
     if (roomsJson) {
       try {
         const customRooms = JSON.parse(roomsJson)
@@ -345,7 +367,7 @@ export async function registerProperty(formData: FormData) {
       }
     }
 
-    // 5. Amenities
+    // 7. Amenities
     if (amenitiesList.length > 0) {
       for (const item of amenitiesList) {
         await prisma.amenity.create({
@@ -358,7 +380,7 @@ export async function registerProperty(formData: FormData) {
       }
     }
 
-    // 6. Notify Super Admins
+    // 8. Notify Super Admins
     try {
       const superAdmins = await prisma.user.findMany({
         where: { role: 'SUPER_ADMIN' }
