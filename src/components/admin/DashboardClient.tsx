@@ -58,6 +58,12 @@ interface DashboardClientProps {
     totalResidents: number
     occupiedBeds: number
     availableBeds: number
+    totalBedsCount?: number
+    trustNestBedsCount?: number
+    ownerManagedBedsCount?: number
+    trustNestOccupiedCount?: number
+    trustNestAvailableCount?: number
+    allocationPercent?: number
     monthlyCollection: number
     pendingRent: number
     openComplaints: number
@@ -116,6 +122,56 @@ export default function DashboardClient({
           </select>
         </div>
       )}
+
+      {/* TrustNest Inventory Allocation Overview Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 text-white rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+              TrustNest Inventory Allocation
+            </span>
+            <span className="text-xs text-slate-300 font-bold">
+              {stats.allocationPercent ?? 100}% Allocated
+            </span>
+          </div>
+          <h3 className="text-lg font-bold text-white tracking-tight">Marketplace &amp; Direct Inventory Split</h3>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2 text-xs">
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase block">Total PG Beds</span>
+              <span className="text-base font-extrabold text-white">{stats.totalBedsCount ?? (stats.occupiedBeds + stats.availableBeds)} Beds</span>
+            </div>
+            <div className="h-6 w-[1px] bg-slate-700 hidden sm:block" />
+            <div>
+              <span className="text-[10px] text-emerald-400 font-bold uppercase block">TrustNest Beds</span>
+              <span className="text-base font-extrabold text-emerald-400">{stats.trustNestBedsCount ?? (stats.occupiedBeds + stats.availableBeds)} Beds</span>
+            </div>
+            <div className="h-6 w-[1px] bg-slate-700 hidden sm:block" />
+            <div>
+              <span className="text-[10px] text-slate-300 font-bold uppercase block">Owner Managed</span>
+              <span className="text-base font-extrabold text-slate-300">{stats.ownerManagedBedsCount ?? 0} Beds</span>
+            </div>
+            <div className="h-6 w-[1px] bg-slate-700 hidden sm:block" />
+            <div>
+              <span className="text-[10px] text-emerald-300 font-bold uppercase block">Available on TrustNest</span>
+              <span className="text-base font-extrabold text-emerald-300">{stats.trustNestAvailableCount ?? stats.availableBeds} Free</span>
+            </div>
+            <div className="h-6 w-[1px] bg-slate-700 hidden sm:block" />
+            <div>
+              <span className="text-[10px] text-amber-300 font-bold uppercase block">Occupied on TrustNest</span>
+              <span className="text-base font-extrabold text-amber-300">{stats.trustNestOccupiedCount ?? stats.occupiedBeds} Occupied</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-3">
+          <Link
+            href="/admin/rooms"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-2 hover:scale-[1.02]"
+          >
+            <span>Manage TrustNest Inventory</span>
+          </Link>
+        </div>
+      </div>
 
       {/* Top Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

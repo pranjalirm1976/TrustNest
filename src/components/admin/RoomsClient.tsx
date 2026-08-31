@@ -1,6 +1,6 @@
 'use client'
 
-import { updateBedStatus } from '@/actions/room.actions'
+import { updateBedStatus, updateBedInventoryAllocation } from '@/actions/room.actions'
 import { useState } from 'react'
 import { 
   Plus, 
@@ -17,7 +17,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Box,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 import Room3DCaptureWizard from '@/components/admin/room-3d/Room3DCaptureWizard'
 
@@ -29,6 +32,7 @@ interface Bed {
   id: string
   identifier: string // 'A', 'B', 'C'
   status: BedStatus
+  isTrustNestInventory?: boolean
   residentName?: string
   paymentStatus?: PaymentStatus
 }
@@ -123,6 +127,28 @@ export default function RoomsClient({ initialRoomsData, propertyId }: RoomsClien
     } finally {
       setIsUpdating(false)
       setTimeout(() => setToastMessage(null), 3000)
+    }
+  }
+
+  const handleToggleInventory = async (bedId: string, currentIsTrustNest: boolean) => {
+    setIsUpdating(true)
+    try {
+      const res = await updateBedInventoryAllocation(bedId, !currentIsTrustNest)
+      if (res.success) {
+        setToastMessage({ text: res.message || 'Inventory allocation updated successfully!', type: 'success' })
+        const room = roomsList.find((r: any) => r.id === selectedRoomId)
+        if (room) {
+          const bed = room.beds.find((b: any) => b.id === bedId)
+          if (bed) bed.isTrustNestInventory = !currentIsTrustNest
+        }
+      } else {
+        setToastMessage({ text: res.error || 'Failed to update inventory allocation.', type: 'error' })
+      }
+    } catch (err: any) {
+      setToastMessage({ text: err.message || 'Error updating allocation.', type: 'error' })
+    } finally {
+      setIsUpdating(false)
+      setTimeout(() => setToastMessage(null), 4000)
     }
   }
 
@@ -388,10 +414,19 @@ export default function RoomsClient({ initialRoomsData, propertyId }: RoomsClien
                           <div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center font-bold text-lg">
                             {bed.identifier}
                           </div>
-                          <div>
-                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${statusBadgeColors[bed.status as BedStatus] || 'bg-slate-50 text-slate-700'}`}>
-                              {bed.status}
-                            </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${statusBadgeColors[bed.status as BedStatus] || 'bg-slate-50 text-slate-700'}`}>
+                                {bed.status}
+                              </span>
+                              <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${
+                                bed.isTrustNestInventory !== false
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : 'bg-slate-100 text-slate-700 border-slate-300'
+                              }`}>
+                                {bed.isTrustNestInventory !== false ? 'TrustNest' : 'Owner Managed'}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
@@ -405,7 +440,7 @@ export default function RoomsClient({ initialRoomsData, propertyId }: RoomsClien
 
                         {/* Dropdown Menu */}
                         {activeBedDropdown === bed.id && (
-                          <div className="absolute right-0 top-8 w-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-10 animate-in fade-in zoom-in-95 duration-100">
+                          <div className="absolute right-0 top-8 w-48 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-10 animate-in fade-in zoom-in-95 duration-100">
                             {bed.status === 'AVAILABLE' && (
                               <button onClick={() => handleUpdateStatus(bed.id, 'OCCUPIED')} disabled={isUpdating} className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Mark as Occupied</button>
                             )}
@@ -418,8 +453,37 @@ export default function RoomsClient({ initialRoomsData, propertyId }: RoomsClien
                             {bed.status === 'MAINTENANCE' && (
                               <button onClick={() => handleUpdateStatus(bed.id, 'AVAILABLE')} disabled={isUpdating} className="w-full text-left px-4 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50">Mark Available</button>
                             )}
+
+                            <div className="border-t border-slate-100 my-1" />
+                            <button
+                              onClick={() => {
+                                setActiveBedDropdown(null)
+                                handleToggleInventory(bed.id, bed.isTrustNestInventory !== false)
+                              }}
+                              disabled={isUpdating}
+                              className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center justify-between"
+                            >
+                              <span>{bed.isTrustNestInventory !== false ? '→ Switch to Owner' : '→ Allocate to TrustNest'}</span>
+                            </button>
                           </div>
                         )}
+                      </div>
+
+                      {/* Direct Inventory Toggle Action */}
+                      <div className="py-1.5 px-2 bg-slate-50 rounded-lg border border-slate-100 mb-3 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 font-semibold">Inventory Allocation:</span>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() => handleToggleInventory(bed.id, bed.isTrustNestInventory !== false)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                            bed.isTrustNestInventory !== false
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {bed.isTrustNestInventory !== false ? '✓ TrustNest Inventory' : 'Owner Managed'}
+                        </button>
                       </div>
 
                       {bed.status === 'OCCUPIED' && bed.residentName ? (

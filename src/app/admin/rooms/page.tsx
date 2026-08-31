@@ -61,6 +61,7 @@ export default async function RoomsPage() {
       id: b.id,
       identifier: b.identifier,
       status: b.status as any,
+      isTrustNestInventory: b.isTrustNestInventory !== false,
       residentName: b.stays[0]?.tenant?.name || undefined,
       paymentStatus: 'PAID' as any
     })),

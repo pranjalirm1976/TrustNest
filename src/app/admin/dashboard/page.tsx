@@ -63,6 +63,28 @@ export default async function AdminDashboard() {
       },
     }).catch(() => 0) : 0
 
+    const trustNestBedsCount = propertyIds.length > 0 ? await prisma.bed.count({
+      where: {
+        room: { floor: { propertyId: { in: propertyIds } } },
+        isTrustNestInventory: true,
+      },
+    }).catch(() => 0) : 0
+
+    const ownerManagedBedsCount = Math.max(0, totalBedsCount - trustNestBedsCount)
+
+    const trustNestOccupiedCount = propertyIds.length > 0 ? await prisma.residentStay.count({
+      where: {
+        status: 'ACTIVE',
+        bed: {
+          isTrustNestInventory: true,
+          room: { floor: { propertyId: { in: propertyIds } } },
+        },
+      },
+    }).catch(() => 0) : 0
+
+    const trustNestAvailableCount = Math.max(0, trustNestBedsCount - trustNestOccupiedCount)
+    const allocationPercent = totalBedsCount > 0 ? Math.round((trustNestBedsCount / totalBedsCount) * 100) : 0
+
     const availableBeds = Math.max(0, totalBedsCount - totalResidents)
 
     const paidPayments = propertyIds.length > 0 ? await prisma.rentPayment.findMany({
@@ -159,6 +181,12 @@ export default async function AdminDashboard() {
           totalResidents,
           occupiedBeds: totalResidents,
           availableBeds,
+          totalBedsCount,
+          trustNestBedsCount,
+          ownerManagedBedsCount,
+          trustNestOccupiedCount,
+          trustNestAvailableCount,
+          allocationPercent,
           monthlyCollection,
           pendingRent,
           openComplaints,
@@ -179,6 +207,12 @@ export default async function AdminDashboard() {
           totalResidents: 0,
           occupiedBeds: 0,
           availableBeds: 0,
+          totalBedsCount: 0,
+          trustNestBedsCount: 0,
+          ownerManagedBedsCount: 0,
+          trustNestOccupiedCount: 0,
+          trustNestAvailableCount: 0,
+          allocationPercent: 0,
           monthlyCollection: 0,
           pendingRent: 0,
           openComplaints: 0,

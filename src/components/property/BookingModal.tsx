@@ -30,6 +30,7 @@ type BedType = {
   id: string
   identifier: string
   status: string
+  isTrustNestInventory?: boolean
 }
 
 type RoomType = {
@@ -79,8 +80,9 @@ export default function BookingModal({
   )
   const selectedRoom = allRooms.find((r) => r.id === selectedRoomId) || allRooms[0]
 
-  // Available beds in selected room
-  const availableBeds = selectedRoom?.beds.filter((b) => b.status === 'VACANT') || []
+  // Available TrustNest beds in selected room
+  const availableBeds = selectedRoom?.beds.filter((b) => b.isTrustNestInventory !== false && b.status === 'VACANT') || []
+  const ownerManagedBeds = selectedRoom?.beds.filter((b) => b.isTrustNestInventory === false) || []
   const [selectedBedId, setSelectedBedId] = useState<string>(
     initialBedId && availableBeds.some((b) => b.id === initialBedId)
       ? initialBedId
@@ -404,10 +406,10 @@ export default function BookingModal({
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-primary cursor-pointer"
                     >
                       {allRooms.map((r) => {
-                        const freeBeds = r.beds.filter((b) => b.status === 'VACANT').length
+                        const freeTrustNestBeds = r.beds.filter((b) => b.isTrustNestInventory !== false && b.status === 'VACANT').length
                         return (
                           <option key={r.id} value={r.id}>
-                            Room {r.roomNumber} ({r.capacity} Sharing - {freeBeds} Free)
+                            Room {r.roomNumber} ({r.capacity} Sharing - {freeTrustNestBeds} TrustNest Available)
                           </option>
                         )
                       })}
@@ -416,31 +418,42 @@ export default function BookingModal({
 
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                      Available Bed
+                      Available Bed (TrustNest)
                     </span>
-                    {availableBeds.length > 0 ? (
-                      <div className="flex gap-2">
-                        {availableBeds.map((bed) => (
-                          <button
-                            key={bed.id}
-                            type="button"
-                            onClick={() => setSelectedBedId(bed.id)}
-                            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              selectedBedId === bed.id
-                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                            }`}
-                          >
-                            <Bed className="w-3.5 h-3.5" />
-                            <span>Bed {bed.identifier}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-2 px-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
-                        No vacant beds in this room
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {availableBeds.map((bed) => (
+                        <button
+                          key={bed.id}
+                          type="button"
+                          onClick={() => setSelectedBedId(bed.id)}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                            selectedBedId === bed.id
+                              ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <Bed className="w-3.5 h-3.5" />
+                          <span>Bed {bed.identifier}</span>
+                        </button>
+                      ))}
+
+                      {ownerManagedBeds.map((bed) => (
+                        <div
+                          key={bed.id}
+                          title="This bed is owner-managed and not bookable on TrustNest"
+                          className="py-2 px-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 text-[10px] font-bold flex items-center gap-1 opacity-75 cursor-not-allowed"
+                        >
+                          <Bed className="w-3 h-3 opacity-50" />
+                          <span>Bed {bed.identifier} (Owner)</span>
+                        </div>
+                      ))}
+
+                      {availableBeds.length === 0 && ownerManagedBeds.length === 0 && (
+                        <div className="w-full py-2 px-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                          No vacant TrustNest beds in this room
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

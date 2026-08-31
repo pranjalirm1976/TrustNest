@@ -523,55 +523,73 @@ export default function SuperAdminDashboardClient({
                       <th className="p-4">Property</th>
                       <th className="p-4">Owner / Contact</th>
                       <th className="p-4">Floors &amp; Rooms</th>
+                      <th className="p-4">TrustNest Inventory</th>
                       <th className="p-4">TrustScore</th>
                       <th className="p-4">Status</th>
                       <th className="p-4 text-right">Super Admin Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {filteredProperties.map(prop => (
-                      <tr key={prop.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden relative shrink-0">
-                              {prop.images[0]?.url ? (
-                                <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/') || prop.images[0].url.startsWith('data:')} />
-                              ) : (
-                                <Building2 className="w-4 h-4 text-slate-400 m-auto mt-3" />
-                              )}
+                    {filteredProperties.map(prop => {
+                      const allBeds = prop.floors?.flatMap((f: any) => f.rooms?.flatMap((r: any) => r.beds) || []) || []
+                      const totalBeds = allBeds.length
+                      const trustNestBeds = allBeds.filter((b: any) => b.isTrustNestInventory !== false)
+                      const ownerManagedBeds = allBeds.filter((b: any) => b.isTrustNestInventory === false)
+                      const percent = totalBeds > 0 ? Math.round((trustNestBeds.length / totalBeds) * 100) : 0
+                      const available = trustNestBeds.filter((b: any) => b.status === 'VACANT' || b.status === 'AVAILABLE').length
+
+                      return (
+                        <tr key={prop.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden relative shrink-0">
+                                {prop.images[0]?.url ? (
+                                  <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/') || prop.images[0].url.startsWith('data:')} />
+                                ) : (
+                                  <Building2 className="w-4 h-4 text-slate-400 m-auto mt-3" />
+                                )}
+                              </div>
+                              <div>
+                                <Link href={`/pg/${prop.id}`} target="_blank" className="font-bold text-slate-900 hover:text-indigo-600 flex items-center gap-1">
+                                  <span>{prop.name}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </Link>
+                                <p className="text-[11px] text-slate-500">{prop.address}</p>
+                              </div>
                             </div>
-                            <div>
-                              <Link href={`/pg/${prop.id}`} target="_blank" className="font-bold text-slate-900 hover:text-indigo-600 flex items-center gap-1">
-                                <span>{prop.name}</span>
-                                <ExternalLink className="w-3 h-3 text-slate-400" />
-                              </Link>
-                              <p className="text-[11px] text-slate-500">{prop.address}</p>
+                          </td>
+
+                          <td className="p-4">
+                            <span className="font-bold text-slate-800">{prop.owner?.name || 'Owner'}</span>
+                            <p className="text-[11px] text-slate-400">{prop.owner?.email}</p>
+                          </td>
+
+                          <td className="p-4 text-slate-600">
+                            <span>{prop.floors?.length || 1} Floors</span> • <span>{prop.floors?.reduce((acc: number, f: any) => acc + (f.rooms?.length || 0), 0) || 0} Rooms</span>
+                          </td>
+
+                          <td className="p-4 text-slate-600">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-bold text-emerald-700">{trustNestBeds.length} / {totalBeds} Beds ({percent}%)</span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {available} Free • {ownerManagedBeds.length} Owner Managed
+                              </span>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="p-4">
-                          <span className="font-bold text-slate-800">{prop.owner?.name || 'Owner'}</span>
-                          <p className="text-[11px] text-slate-400">{prop.owner?.email}</p>
-                        </td>
+                          <td className="p-4">
+                            <span className="font-bold text-indigo-600 font-mono">★ {prop.trustScore.toFixed(1)}</span>
+                          </td>
 
-                        <td className="p-4 text-slate-600">
-                          <span>{prop.floors?.length || 1} Floors</span> • <span>{prop.floors?.reduce((acc: number, f: any) => acc + (f.rooms?.length || 0), 0) || 0} Rooms</span>
-                        </td>
-
-                        <td className="p-4">
-                          <span className="font-bold text-indigo-600 font-mono">★ {prop.trustScore.toFixed(1)}</span>
-                        </td>
-
-                        <td className="p-4">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-                            prop.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            prop.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {prop.status}
-                          </span>
-                        </td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                              prop.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              prop.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {prop.status}
+                            </span>
+                          </td>
 
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
@@ -603,8 +621,9 @@ export default function SuperAdminDashboardClient({
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
+                    )
+                  })}
+                </tbody>
                 </table>
               </div>
             </div>

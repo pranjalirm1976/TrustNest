@@ -31,7 +31,11 @@ import {
   IndianRupee,
   Box,
   Camera,
-  Video
+  Video,
+  ShieldCheck,
+  Percent,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 import Room3DCaptureWizard from '@/components/admin/room-3d/Room3DCaptureWizard'
 
@@ -42,7 +46,8 @@ const steps = [
   { id: 4, name: 'Photos' },
   { id: 5, name: 'Floor Layouts' },
   { id: 6, name: 'Rooms & Beds' },
-  { id: 7, name: 'Review & Submit' }
+  { id: 7, name: 'TrustNest Inventory' },
+  { id: 8, name: 'Review & Submit' }
 ]
 
 const pgTypes = [
@@ -66,6 +71,12 @@ interface FloorConfig {
   facilities: string[]
 }
 
+interface BedConfig {
+  identifier: string
+  status: 'VACANT' | 'OCCUPIED' | 'MAINTENANCE'
+  isTrustNestInventory: boolean
+}
+
 interface RoomConfig {
   id: string
   floorLevel: number
@@ -76,7 +87,7 @@ interface RoomConfig {
   hasAc: boolean
   hasBalcony: boolean
   pricePerBed: number
-  beds: { identifier: string; status: 'VACANT' | 'OCCUPIED' | 'MAINTENANCE' }[]
+  beds: BedConfig[]
 }
 
 export default function PGRegistrationClient() {
@@ -112,7 +123,7 @@ export default function PGRegistrationClient() {
     { id: 'fl-2', level: 2, name: '2nd Floor', facilities: ['Rooms', 'Washrooms', 'Balcony'], layoutFile: null, layoutPreviewUrl: null },
   ])
 
-  // Rooms State
+  // Rooms State with explicit isTrustNestInventory allocation
   const [rooms, setRooms] = useState<RoomConfig[]>([
     {
       id: 'rm-101',
@@ -125,8 +136,8 @@ export default function PGRegistrationClient() {
       hasBalcony: false,
       pricePerBed: 9000,
       beds: [
-        { identifier: 'A', status: 'VACANT' },
-        { identifier: 'B', status: 'VACANT' }
+        { identifier: 'A', status: 'VACANT', isTrustNestInventory: true },
+        { identifier: 'B', status: 'VACANT', isTrustNestInventory: true }
       ]
     },
     {
@@ -140,9 +151,9 @@ export default function PGRegistrationClient() {
       hasBalcony: true,
       pricePerBed: 7500,
       beds: [
-        { identifier: 'A', status: 'OCCUPIED' },
-        { identifier: 'B', status: 'VACANT' },
-        { identifier: 'C', status: 'VACANT' }
+        { identifier: 'A', status: 'OCCUPIED', isTrustNestInventory: true },
+        { identifier: 'B', status: 'VACANT', isTrustNestInventory: true },
+        { identifier: 'C', status: 'VACANT', isTrustNestInventory: false }
       ]
     },
     {
@@ -156,8 +167,8 @@ export default function PGRegistrationClient() {
       hasBalcony: true,
       pricePerBed: 8500,
       beds: [
-        { identifier: 'A', status: 'VACANT' },
-        { identifier: 'B', status: 'VACANT' }
+        { identifier: 'A', status: 'VACANT', isTrustNestInventory: true },
+        { identifier: 'B', status: 'VACANT', isTrustNestInventory: false }
       ]
     }
   ])
@@ -210,7 +221,7 @@ export default function PGRegistrationClient() {
       }
       localStorage.setItem('trustnest_pg_registration_draft', JSON.stringify(draftPayload))
     } catch (e) {
-      // Ignore quota exceeded or storage disabled
+      // Ignore quota exceeded
     }
   }, [formData, floors, rooms, currentStep, isDraftRestored])
 
@@ -278,8 +289,8 @@ export default function PGRegistrationClient() {
         hasBalcony: false,
         pricePerBed: formData.priceFrom,
         beds: [
-          { identifier: 'A', status: 'VACANT' },
-          { identifier: 'B', status: 'VACANT' }
+          { identifier: 'A', status: 'VACANT', isTrustNestInventory: true },
+          { identifier: 'B', status: 'VACANT', isTrustNestInventory: true }
         ]
       }
     ])
@@ -292,9 +303,10 @@ export default function PGRegistrationClient() {
   const updateRoomBeds = (roomId: string, capacity: number) => {
     setRooms(prev => prev.map(r => {
       if (r.id === roomId) {
-        const beds = Array.from({ length: capacity }, (_, i) => ({
+        const beds: BedConfig[] = Array.from({ length: capacity }, (_, i) => ({
           identifier: String.fromCharCode(65 + i),
-          status: 'VACANT' as const
+          status: 'VACANT' as const,
+          isTrustNestInventory: true
         }))
         const sharingType = capacity === 1 ? 'SINGLE' : capacity === 2 ? 'DOUBLE' : capacity === 3 ? 'TRIPLE' : 'FOUR'
         return { ...r, capacity, sharingType, beds }
@@ -315,6 +327,46 @@ export default function PGRegistrationClient() {
     }))
   }
 
+  // INVENTORY ALLOCATION HANDLERS
+  const toggleBedInventory = (roomId: string, bedIdx: number) => {
+    setRooms(prev => prev.map(r => {
+      if (r.id === roomId) {
+        const updatedBeds = [...r.beds]
+        const current = updatedBeds[bedIdx].isTrustNestInventory !== false
+        updatedBeds[bedIdx].isTrustNestInventory = !current
+        return { ...r, beds: updatedBeds }
+      }
+      return r
+    }))
+  }
+
+  const setRoomInventory = (roomId: string, isTrustNest: boolean) => {
+    setRooms(prev => prev.map(r => {
+      if (r.id === roomId) {
+        const updatedBeds = r.beds.map(b => ({ ...b, isTrustNestInventory: isTrustNest }))
+        return { ...r, beds: updatedBeds }
+      }
+      return r
+    }))
+  }
+
+  const setFloorInventory = (floorLevel: number, isTrustNest: boolean) => {
+    setRooms(prev => prev.map(r => {
+      if (r.floorLevel === floorLevel) {
+        const updatedBeds = r.beds.map(b => ({ ...b, isTrustNestInventory: isTrustNest }))
+        return { ...r, beds: updatedBeds }
+      }
+      return r
+    }))
+  }
+
+  const setAllInventory = (isTrustNest: boolean) => {
+    setRooms(prev => prev.map(r => ({
+      ...r,
+      beds: r.beds.map(b => ({ ...b, isTrustNestInventory: isTrustNest }))
+    })))
+  }
+
   // Amenities toggle
   const toggleAmenity = (amenity: string) => {
     setFormData(prev => ({
@@ -325,6 +377,13 @@ export default function PGRegistrationClient() {
     }))
   }
 
+  // Calculated Metrics
+  const totalBeds = rooms.reduce((acc, r) => acc + r.beds.length, 0)
+  const trustNestBeds = rooms.reduce((acc, r) => acc + r.beds.filter(b => b.isTrustNestInventory !== false).length, 0)
+  const ownerManagedBeds = totalBeds - trustNestBeds
+  const allocationPercent = totalBeds > 0 ? Math.round((trustNestBeds / totalBeds) * 100) : 0
+  const vacantBeds = rooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'VACANT' && b.isTrustNestInventory !== false).length, 0)
+
   // Step Validation & Navigation
   const handleNext = () => {
     const newErrors: Record<string, string> = {}
@@ -334,6 +393,9 @@ export default function PGRegistrationClient() {
     } else if (currentStep === 2) {
       if (!formData.address.trim()) newErrors.address = 'Full address is required'
       if (!formData.city.trim()) newErrors.city = 'City is required'
+    } else if (currentStep === 6) {
+      if (rooms.length === 0) newErrors.rooms = 'At least one room is required'
+      if (totalBeds === 0) newErrors.rooms = 'At least one bed is required'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -395,7 +457,7 @@ export default function PGRegistrationClient() {
         }
       })
 
-      // Rooms & Beds
+      // Rooms & Beds with exact inventory allocation
       const roomsPayload = rooms.map(r => ({
         floorLevel: r.floorLevel,
         roomNumber: r.roomNumber,
@@ -443,7 +505,7 @@ export default function PGRegistrationClient() {
         setMapQueryOverride(`${lat},${lng}`)
         setIsLocating(false)
       },
-      (err) => {
+      () => {
         setIsLocating(false)
         alert('Could not detect GPS location automatically.')
       },
@@ -451,216 +513,212 @@ export default function PGRegistrationClient() {
     )
   }
 
-  const composedAddress = [formData.address, formData.area, formData.city, formData.pincode].filter(Boolean).join(', ')
-  const mapSearchQuery = mapQueryOverride || composedAddress || `${formData.latitude},${formData.longitude}` || 'Hinjawadi, Pune'
-  const mapEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=15&ie=UTF8&iwloc=B&output=embed`
-
-  // Summary Metrics
-  const totalBeds = rooms.reduce((acc, r) => acc + r.beds.length, 0)
-  const vacantBeds = rooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'VACANT').length, 0)
-  const occupiedBeds = rooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'OCCUPIED').length, 0)
-
   return (
-    <div className="max-w-[850px] mx-auto w-full pb-16">
+    <div className="max-w-4xl mx-auto space-y-8 pb-16">
       
-      {/* Desktop Stepper */}
-      <div className="hidden sm:block mb-8">
-        <div className="flex items-center justify-between relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-slate-200 z-0" />
-          {steps.map((step) => {
-            const isCompleted = currentStep > step.id
-            const isActive = currentStep === step.id
+      {/* Title & Draft recovery bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Register New PG</h1>
+          <p className="text-sm text-slate-500 mt-1">Onboard your property to the TrustNest verified network.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleClearDraft}
+            className="text-xs text-slate-400 hover:text-red-600 transition-colors flex items-center gap-1 cursor-pointer py-1.5 px-3 rounded-lg border border-slate-200 hover:border-red-200"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Reset Draft</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Modern 8-Step Breadcrumb Progress Bar */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm overflow-x-auto">
+        <div className="flex items-center justify-between min-w-[700px]">
+          {steps.map((s, index) => {
+            const isCompleted = currentStep > s.id
+            const isCurrent = currentStep === s.id
 
             return (
-              <div key={step.id} className="relative z-10 flex flex-col items-center gap-1.5 bg-slate-50 px-1.5">
-                <button
-                  type="button"
-                  onClick={() => currentStep > step.id && setCurrentStep(step.id)}
-                  disabled={currentStep < step.id}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    isCompleted ? 'bg-emerald-500 text-white cursor-pointer hover:bg-emerald-600' :
-                    isActive ? 'bg-indigo-600 text-white ring-4 ring-indigo-50 shadow-sm' :
-                    'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  {isCompleted ? <Check className="w-4 h-4" /> : step.id}
-                </button>
-                <span className={`text-[11px] font-semibold tracking-tight whitespace-nowrap ${
-                  isActive ? 'text-indigo-600 font-bold' : 
-                  isCompleted ? 'text-slate-700' : 'text-slate-400'
-                }`}>
-                  {step.name}
-                </span>
+              <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(s.id)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      isCompleted
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : isCurrent
+                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-50 shadow-sm'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {isCompleted ? <Check className="w-4 h-4" /> : s.id}
+                  </button>
+                  <span className={`text-[10px] font-bold tracking-tight whitespace-nowrap ${
+                    isCurrent ? 'text-indigo-600' : isCompleted ? 'text-slate-800' : 'text-slate-400'
+                  }`}>
+                    {s.name}
+                  </span>
+                </div>
+
+                {index < steps.length - 1 && (
+                  <div className={`h-[2px] flex-1 mx-2 transition-colors ${
+                    currentStep > s.id ? 'bg-emerald-400' : 'bg-slate-200'
+                  }`} />
+                )}
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* Mobile Stepper Header */}
-      <div className="sm:hidden mb-6 flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Step {currentStep} of {steps.length}</span>
-          <h3 className="text-sm font-bold text-slate-900">{steps[currentStep - 1].name}</h3>
-        </div>
-        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">
-          {currentStep}/{steps.length}
-        </div>
-      </div>
-
-      {/* Form Container */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      {/* Main Form Content Container */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
         
-        {/* STEP 1: Basic Information */}
+        {/* STEP 1: Basic Info */}
         {currentStep === 1 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Basic Information</h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Let&apos;s start with the property identity and base pricing.</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Enter the public name, target gender group, and starting price.</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  PG Name <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PG Name *</label>
+                <input
+                  type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="e.g. Emerald Elite Living PG"
-                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'} focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm`}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Emerald Elite Luxury PG"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
                 />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                {errors.name && <p className="text-xs text-red-500 mt-1 font-semibold">{errors.name}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">PG Gender Type *</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {pgTypes.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, type: t.id }))}
+                      className={`p-3.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                        formData.type === t.id
+                          ? 'border-indigo-600 bg-indigo-50/60 text-indigo-700 font-bold shadow-sm'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium'
+                      }`}
+                    >
+                      <t.icon className="w-5 h-5" />
+                      <span className="text-xs">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    PG Type <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {pgTypes.map(t => {
-                      const Icon = t.icon
-                      const isSelected = formData.type === t.id
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setFormData({...formData, type: t.id})}
-                          className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
-                            isSelected 
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600 font-bold' 
-                              : 'border-slate-200 hover:border-slate-300 bg-white text-slate-600'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 mb-1" />
-                          <span className="text-xs">{t.label}</span>
-                        </button>
-                      )
-                    })}
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Starting Rent (₹ / Month) *</label>
+                  <div className="relative">
+                    <IndianRupee className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="number"
+                      value={formData.priceFrom}
+                      onChange={(e) => setFormData(prev => ({ ...prev, priceFrom: parseInt(e.target.value) || 0 }))}
+                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
+                  {errors.priceFrom && <p className="text-xs text-red-500 mt-1 font-semibold">{errors.priceFrom}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Starting Rent (₹ / Bed / Month) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <IndianRupee className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input 
-                      type="number" 
-                      value={formData.priceFrom}
-                      onChange={(e) => setFormData({...formData, priceFrom: parseFloat(e.target.value) || 0})}
-                      placeholder="8500"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm font-semibold tabular-nums"
-                    />
-                  </div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Short Description</label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="e.g. Modern high-tech co-living space near IT hub"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Description &amp; Highlights</label>
-                <textarea 
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Describe your PG amenities, atmosphere, proximity to IT parks/colleges, and rules..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm resize-none"
-                />
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Location & GPS Map */}
+        {/* STEP 2: Location */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Location &amp; Discovery Map</h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Pins your property on the user discovery map.</p>
+              <h2 className="text-lg font-bold text-slate-900">Location &amp; Address</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Help residents find your PG on map and search results.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full Address <span className="text-red-500">*</span></label>
-                <input 
-                  type="text" 
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Street Address *</label>
+                <input
+                  type="text"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  placeholder="Street address, building number, landmark..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="e.g. Plot 42, Phase 1, Near Blue Ridge IT Park"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
                 />
+                {errors.address && <p className="text-xs text-red-500 mt-1 font-semibold">{errors.address}</p>}
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">City</label>
-                <input 
-                  type="text" 
-                  value={formData.city}
-                  onChange={(e) => setFormData({...formData, city: e.target.value})}
-                  placeholder="e.g. Pune"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Area / Locality</label>
-                <input 
-                  type="text" 
-                  value={formData.area}
-                  onChange={(e) => setFormData({...formData, area: e.target.value})}
-                  placeholder="e.g. Hinjawadi Phase 1"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
-                />
-              </div>
-            </div>
 
-            {/* Live Interactive Map */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Live Map Pin</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">City *</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Area / Landmark</label>
+                  <input
+                    type="text"
+                    value={formData.area}
+                    onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pincode</label>
+                  <input
+                    type="text"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData(prev => ({ ...prev, pincode: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Geolocation Button */}
+              <div className="pt-2 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={handleDetectLocation}
                   disabled={isLocating}
-                  className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
                 >
                   {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crosshair className="w-3.5 h-3.5" />}
-                  <span>Detect GPS Location</span>
+                  <span>Auto-Detect GPS Coordinates</span>
                 </button>
-              </div>
 
-              <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 relative overflow-hidden shadow-sm">
-                <iframe
-                  src={mapEmbedUrl}
-                  className="w-full h-full border-0 absolute inset-0"
-                  allowFullScreen
-                  loading="lazy"
-                  title="PG Map"
-                />
-                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 flex items-center gap-2 text-xs font-mono text-slate-700 z-10">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                  <span>{formData.latitude}° N, {formData.longitude}° E</span>
-                </div>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+                </span>
               </div>
             </div>
           </div>
@@ -671,27 +729,25 @@ export default function PGRegistrationClient() {
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Amenities &amp; Facilities</h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Highlight the facilities available at your property.</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Select all facilities included in the monthly rent package.</p>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {amenitiesList.map(amenity => {
-                const isSelected = formData.amenities.includes(amenity)
+              {amenitiesList.map(a => {
+                const isSelected = formData.amenities.includes(a)
                 return (
                   <button
-                    key={amenity}
+                    key={a}
                     type="button"
-                    onClick={() => toggleAmenity(amenity)}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                    onClick={() => toggleAmenity(a)}
+                    className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 font-bold shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                        ? 'border-indigo-600 bg-indigo-50/60 text-indigo-900 font-bold'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium'
                     }`}
                   >
-                    <div className={`w-4 h-4 rounded flex items-center justify-center ${isSelected ? 'bg-indigo-600 text-white' : 'border border-slate-300'}`}>
-                      {isSelected && <Check className="w-3 h-3" />}
-                    </div>
-                    <span className="text-xs font-semibold">{amenity}</span>
+                    <span className="text-xs">{a}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
                   </button>
                 )
               })}
@@ -699,102 +755,98 @@ export default function PGRegistrationClient() {
           </div>
         )}
 
-        {/* STEP 4: Property Photos */}
+        {/* STEP 4: Photos */}
         {currentStep === 4 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Property Photos &amp; Media</h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Upload photos for each zone. These will appear directly in the public gallery.</p>
+              <h2 className="text-lg font-bold text-slate-900">Property Photographs</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Upload clear photos of the building, rooms, lobby, and dining areas.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { id: 'exterior', label: 'PG Exterior (Cover Photo)', desc: 'Main front view of building' },
-                { id: 'entrance', label: 'Entrance & Lobby', desc: 'Reception or gate entrance' },
-                { id: 'common', label: 'Common Area / Lounge', desc: 'Study, TV area or corridor' },
-                { id: 'rooms', label: 'Sample Bedrooms', desc: 'Clean bed, wardrobe & study table' },
-                { id: 'dining', label: 'Dining Area / Kitchen', desc: 'Meal dining hall & drinking water' },
-                { id: 'facilities', label: 'Bathrooms & Amenities', desc: 'Washrooms, laundry or gym' },
-              ].map(zone => (
-                <PhotoUploadCard
-                  key={zone.id}
-                  label={zone.label}
-                  desc={zone.desc}
-                  uploaded={uploadedPhotos[zone.id]}
-                  onUpload={(file) => handlePhotoUpload(zone.id, file)}
-                  onRemove={() => handlePhotoRemove(zone.id)}
-                />
-              ))}
+              <PhotoUploadCard
+                label="Exterior Building View *"
+                desc="Main facade photo of the building."
+                uploaded={uploadedPhotos['exterior']}
+                onUpload={(file) => handlePhotoUpload('exterior', file)}
+                onRemove={() => handlePhotoRemove('exterior')}
+              />
+              <PhotoUploadCard
+                label="Entrance &amp; Reception"
+                desc="Lobby / entrance area."
+                uploaded={uploadedPhotos['entrance']}
+                onUpload={(file) => handlePhotoUpload('entrance', file)}
+                onRemove={() => handlePhotoRemove('entrance')}
+              />
+              <PhotoUploadCard
+                label="Typical Bedroom View"
+                desc="Room layout with beds and wardrobe."
+                uploaded={uploadedPhotos['rooms']}
+                onUpload={(file) => handlePhotoUpload('rooms', file)}
+                onRemove={() => handlePhotoRemove('rooms')}
+              />
+              <PhotoUploadCard
+                label="Dining &amp; Kitchen"
+                desc="Mess / food serving area."
+                uploaded={uploadedPhotos['dining']}
+                onUpload={(file) => handlePhotoUpload('dining', file)}
+                onRemove={() => handlePhotoRemove('dining')}
+              />
+              <PhotoUploadCard
+                label="Common Lounge / Study"
+                desc="Recreation or study hall."
+                uploaded={uploadedPhotos['common']}
+                onUpload={(file) => handlePhotoUpload('common', file)}
+                onRemove={() => handlePhotoRemove('common')}
+              />
+              <PhotoUploadCard
+                label="Amenities &amp; Facilities"
+                desc="Gym, laundry, power backup."
+                uploaded={uploadedPhotos['facilities']}
+                onUpload={(file) => handlePhotoUpload('facilities', file)}
+                onRemove={() => handlePhotoRemove('facilities')}
+              />
             </div>
           </div>
         )}
 
-        {/* STEP 5: Floors & Floor Architectural Layouts */}
+        {/* STEP 5: Floor Layouts */}
         {currentStep === 5 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Floors &amp; Architectural Layouts</h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Upload distinct blueprint layouts for each floor.</p>
+                <h2 className="text-lg font-bold text-slate-900">Floors &amp; Blueprint Layouts</h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Configure floors and attach architectural blueprint images.</p>
               </div>
               <button
                 type="button"
                 onClick={addFloor}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Floor</span>
               </button>
             </div>
 
-            <div className="space-y-4">
-              {floors.map((floor) => (
-                <div key={floor.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-indigo-600" />
-                      <input 
-                        type="text" 
-                        value={floor.name}
-                        onChange={(e) => setFloors(prev => prev.map(f => f.id === floor.id ? { ...f, name: e.target.value } : f))}
-                        className="font-bold text-sm text-slate-900 bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-600 outline-none px-1"
-                      />
-                      <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">Level {floor.level}</span>
+            <div className="space-y-3">
+              {floors.map(floor => (
+                <div key={floor.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                      {floor.level}
                     </div>
-
-                    {floors.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeFloor(floor.id)}
-                        className="text-slate-400 hover:text-red-600 p-1 rounded transition-colors"
-                        title="Remove floor"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{floor.name}</h4>
+                      <p className="text-xs text-slate-400">Level {floor.level} • {floor.facilities.join(', ')}</p>
+                    </div>
                   </div>
 
-                  {/* Floor Blueprint Upload Row */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${floor.layoutFile || floor.layoutPreviewUrl ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                        {floor.layoutFile || floor.layoutPreviewUrl ? <CheckCircle2 className="w-5 h-5" /> : <UploadCloud className="w-5 h-5" />}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-800">
-                          {floor.layoutFile ? `✓ ${floor.layoutFile.name}` : `Architectural Blueprint (${floor.name})`}
-                        </h4>
-                        <p className="text-[11px] text-slate-500">
-                          {floor.layoutFile ? 'Layout uploaded & connected' : 'PNG, JPG or PDF architectural map'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <label className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
-                      {floor.layoutFile ? 'Change Layout' : 'Upload Floor Layout'}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm">
+                      <span>{floor.layoutFile ? `✓ ${floor.layoutFile.name}` : '+ Upload Blueprint'}</span>
                       <input 
                         type="file" 
-                        accept="image/*,.pdf" 
+                        accept="image/*" 
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) handleFloorLayoutUpload(floor.id, file)
@@ -813,7 +865,7 @@ export default function PGRegistrationClient() {
         {currentStep === 6 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Rooms &amp; Bed Availability</h2>
+              <h2 className="text-lg font-bold text-slate-900">Rooms &amp; Bed Capacity</h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Configure room capacities and toggle bed occupancy states.</p>
             </div>
 
@@ -865,7 +917,7 @@ export default function PGRegistrationClient() {
 
                           {/* Beds interactive status toggle */}
                           <div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Beds (Click to toggle status)</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Beds (Click to toggle occupancy)</span>
                             <div className="flex flex-wrap gap-1.5">
                               {room.beds.map((bed, bIdx) => (
                                 <button
@@ -880,7 +932,7 @@ export default function PGRegistrationClient() {
                                   title="Click to toggle: Available / Occupied / Maintenance"
                                 >
                                   <Bed className="w-3 h-3" />
-                                  <span>Bed {bed.identifier}: {bed.status === 'VACANT' ? 'Available' : bed.status}</span>
+                                  <span>Bed {bed.identifier}: {bed.status === 'VACANT' ? 'Vacant' : bed.status}</span>
                                 </button>
                               ))}
                             </div>
@@ -915,8 +967,187 @@ export default function PGRegistrationClient() {
           </div>
         )}
 
-        {/* STEP 7: Review & Submit */}
+        {/* STEP 7: TrustNest Inventory Allocation (NEW STEP) */}
         {currentStep === 7 && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-lg font-bold text-slate-900">TrustNest Inventory Allocation</h2>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+                Select the exact rooms and beds that you want to make available for booking through TrustNest. Beds not selected will remain under your direct owner management.
+              </p>
+            </div>
+
+            {/* Dynamic Allocation Summary Metrics Card */}
+            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total PG Beds</span>
+                  <p className="text-xl font-extrabold text-white mt-0.5">{totalBeds} Beds</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">TrustNest Beds</span>
+                  <p className="text-xl font-extrabold text-emerald-400 mt-0.5">{trustNestBeds} Beds</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Owner Managed</span>
+                  <p className="text-xl font-extrabold text-slate-300 mt-0.5">{ownerManagedBeds} Beds</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">TrustNest Allocation</span>
+                  <p className="text-xl font-extrabold text-indigo-300 mt-0.5">{allocationPercent}%</p>
+                </div>
+              </div>
+
+              {/* Progress visual bar */}
+              <div className="space-y-1.5 pt-2 border-t border-white/10">
+                <div className="flex justify-between text-[11px] font-bold">
+                  <span className="text-emerald-300">TrustNest ({allocationPercent}%)</span>
+                  <span className="text-slate-300">Owner Direct ({100 - allocationPercent}%)</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden flex">
+                  <div 
+                    className="bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${allocationPercent}%` }}
+                  />
+                  <div 
+                    className="bg-slate-600 transition-all duration-300"
+                    style={{ width: `${100 - allocationPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Batch Action Toolbar */}
+            <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-xs font-bold text-slate-700">Quick Batch Allocation:</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAllInventory(true)}
+                  className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  ✓ Select All as TrustNest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllInventory(false)}
+                  className="text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  Deselect All (All Owner Managed)
+                </button>
+              </div>
+            </div>
+
+            {/* Exact Room & Bed Selection */}
+            <div className="space-y-6">
+              {floors.map(floor => {
+                const floorRooms = rooms.filter(r => r.floorLevel === floor.level)
+                return (
+                  <div key={floor.id} className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base text-slate-900">{floor.name}</span>
+                        <span className="text-xs text-slate-500">({floorRooms.length} Rooms)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFloorInventory(floor.level, true)}
+                          className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        >
+                          Select Floor (TrustNest)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFloorInventory(floor.level, false)}
+                          className="text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                        >
+                          Floor (Owner Managed)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {floorRooms.map(room => {
+                        const roomBeds = room.beds
+                        const isAllTrustNest = roomBeds.every(b => b.isTrustNestInventory !== false)
+                        return (
+                          <div key={room.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="font-extrabold text-sm text-slate-900">Room {room.roomNumber}</span>
+                                <span className="text-xs text-slate-500 ml-2">({room.sharingType})</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setRoomInventory(room.id, !isAllTrustNest)}
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
+                                  isAllTrustNest
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                                }`}
+                              >
+                                {isAllTrustNest ? '✓ Entire Room on TrustNest' : 'Select Entire Room'}
+                              </button>
+                            </div>
+
+                            {/* Individual Bed Toggles */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              {room.beds.map((bed, bIdx) => {
+                                const isTN = bed.isTrustNestInventory !== false
+                                return (
+                                  <div
+                                    key={bIdx}
+                                    onClick={() => toggleBedInventory(room.id, bIdx)}
+                                    className={`p-3 rounded-xl border flex flex-col justify-between gap-2 cursor-pointer transition-all ${
+                                      isTN
+                                        ? 'bg-emerald-50/90 border-emerald-300 ring-1 ring-emerald-400/30'
+                                        : 'bg-white border-slate-200 opacity-80 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <Bed className={`w-4 h-4 ${isTN ? 'text-emerald-700' : 'text-slate-400'}`} />
+                                        <span className="text-xs font-bold text-slate-900">Bed {bed.identifier}</span>
+                                      </div>
+                                      {isTN ? (
+                                        <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                                      ) : (
+                                        <Square className="w-4 h-4 text-slate-400 shrink-0" />
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className={`font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                        isTN
+                                          ? 'bg-emerald-200/70 text-emerald-900'
+                                          : 'bg-slate-200 text-slate-700'
+                                      }`}>
+                                        {isTN ? 'TrustNest' : 'Owner Managed'}
+                                      </span>
+                                      <span className="text-slate-500 font-semibold">{bed.status}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 8: Review & Submit */}
+        {currentStep === 8 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Registration Review &amp; Checklist</h2>
@@ -930,16 +1161,16 @@ export default function PGRegistrationClient() {
                 <p className="text-sm font-bold text-slate-900 truncate">{formData.name || 'Untitled PG'}</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Floors</span>
-                <p className="text-sm font-bold text-slate-900">{floors.length} Floors</p>
+                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Floors &amp; Rooms</span>
+                <p className="text-sm font-bold text-slate-900">{floors.length} Floors • {rooms.length} Rooms</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Total Rooms</span>
-                <p className="text-sm font-bold text-slate-900">{rooms.length} Rooms</p>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">TrustNest Beds</span>
+                <p className="text-sm font-bold text-emerald-700">{trustNestBeds} of {totalBeds} Beds ({allocationPercent}%)</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Available Beds</span>
-                <p className="text-sm font-bold text-emerald-700">{vacantBeds} of {totalBeds} Vacant</p>
+                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Owner Managed</span>
+                <p className="text-sm font-bold text-slate-700">{ownerManagedBeds} Beds</p>
               </div>
             </div>
 
@@ -963,7 +1194,11 @@ export default function PGRegistrationClient() {
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800">
                 <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Rooms &amp; Beds: <strong>{rooms.length} rooms with {totalBeds} beds total</strong></span>
+                <span>Rooms &amp; Beds: <strong>{rooms.length} rooms with {totalBeds} total beds</strong></span>
+              </div>
+              <div className="flex items-center gap-2.5 p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-950">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>TrustNest Inventory Allocation: <strong>{trustNestBeds} TrustNest beds ({allocationPercent}%) • {ownerManagedBeds} Owner managed beds</strong></span>
               </div>
             </div>
           </div>

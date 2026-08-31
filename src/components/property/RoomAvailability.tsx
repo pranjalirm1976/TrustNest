@@ -10,6 +10,7 @@ type Bed = {
   id: string
   identifier: string
   status: string // "VACANT" | "OCCUPIED" | "MAINTENANCE"
+  isTrustNestInventory?: boolean
 }
 
 type RoomAmenity = {
@@ -166,6 +167,47 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
         </button>
       </div>
 
+      {/* TrustNest Inventory Transparency Summary Header */}
+      {rooms.length > 0 && (() => {
+        const allBeds = rooms.flatMap(r => r.beds)
+        const trustNestBeds = allBeds.filter(b => b.isTrustNestInventory !== false)
+        const trustNestAvailable = trustNestBeds.filter(b => b.status === 'VACANT').length
+        const ownerManagedCount = allBeds.filter(b => b.isTrustNestInventory === false).length
+
+        return (
+          <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-premium flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-400">TrustNest Verified Inventory</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    {trustNestAvailable} Beds Bookable Now
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Online reservation is guaranteed directly through TrustNest for verified inventory.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs shrink-0 bg-slate-800/80 px-3.5 py-2 rounded-xl border border-slate-700">
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">TrustNest</span>
+                <span className="font-extrabold text-emerald-400">{trustNestAvailable} Free / {trustNestBeds.length} Total</span>
+              </div>
+              <div className="h-6 w-[1px] bg-slate-700" />
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">Owner Direct</span>
+                <span className="font-bold text-slate-300">{ownerManagedCount} Beds</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Main split row layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -181,6 +223,7 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
               {rooms.map((room, idx) => {
                 const roomPrice = calculatePrice(room.capacity)
                 const isSelected = selectedRoomId === room.id
+                const vacantTrustNestBed = room.beds.find(b => b.isTrustNestInventory !== false && b.status === 'VACANT')
 
                 return (
                   <div 
@@ -206,11 +249,11 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
                         <div className="flex items-center gap-2">
                           <h4 className="text-base font-extrabold text-slate-900">Room {room.roomNumber}</h4>
                           <span className="bg-indigo-50 border border-indigo-100 text-brand-primary text-[8px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded">
-                            1st Floor
+                            {getSharingType(room.capacity)}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 font-bold mt-1">
-                          {getSharingType(room.capacity)} • Beds
+                          {room.beds.length} Total Beds ({room.beds.filter(b => b.isTrustNestInventory !== false).length} TrustNest)
                         </p>
                       </div>
 
@@ -232,15 +275,31 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
                       </div>
                     </div>
 
-                    {/* Bed Status visual indicators */}
+                    {/* Bed Status visual indicators with Inventory Source */}
                     <div className="flex flex-col gap-2 shrink-0 md:border-l md:border-slate-100 md:pl-6">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">
                         Bed Availability
                       </span>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {room.beds.map((bed) => {
-                          const isVacant = bed.status === 'VACANT'
-                          const isReserved = bed.status === 'RESERVED' || bed.status === 'MAINTENANCE'
+                          const isOwner = bed.isTrustNestInventory === false
+                          const isVacant = bed.status === 'VACANT' && !isOwner
+                          const isReserved = (bed.status === 'RESERVED' || bed.status === 'MAINTENANCE') && !isOwner
+
+                          if (isOwner) {
+                            return (
+                              <div
+                                key={bed.id}
+                                title={`Bed ${bed.identifier} (Owner Managed - Not Bookable on TrustNest)`}
+                                className="p-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-400 flex flex-col items-center justify-center gap-0.5 min-w-[56px] cursor-not-allowed opacity-80"
+                              >
+                                <BedIcon className="w-3.5 h-3.5 opacity-50" />
+                                <span className="text-[8px] font-bold font-mono">Bed {bed.identifier}</span>
+                                <span className="text-[7px] font-bold uppercase tracking-tight text-slate-500">Owner</span>
+                              </div>
+                            )
+                          }
+
                           return (
                             <button
                               key={bed.id}
@@ -252,10 +311,10 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
                                   setShowBookingModal(true)
                                 }
                               }}
-                              title={`Bed ${bed.identifier} (${bed.status})${isVacant ? ' - Click to Book' : ''}`}
-                              className={`p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 min-w-[52px] transition-all ${
+                              title={`Bed ${bed.identifier} (${isVacant ? 'Available on TrustNest' : 'Occupied'})${isVacant ? ' - Click to Book' : ''}`}
+                              className={`p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 min-w-[56px] transition-all ${
                                 isVacant 
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm' 
+                                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm ring-1 ring-emerald-400/20' 
                                   : isReserved
                                   ? 'border-amber-200 bg-amber-50 text-amber-700 cursor-default'
                                   : 'border-red-200 bg-red-50 text-red-600 cursor-default'
@@ -263,7 +322,12 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
                             >
                               <BedIcon className="w-3.5 h-3.5" />
                               <span className="text-[8px] font-bold font-mono">
-                                {isVacant ? `Bed ${bed.identifier}` : isReserved ? 'Reserved' : 'Occupied'}
+                                Bed {bed.identifier}
+                              </span>
+                              <span className={`text-[7px] font-extrabold uppercase tracking-tight ${
+                                isVacant ? 'text-emerald-800 font-black' : isReserved ? 'text-amber-800' : 'text-red-700'
+                              }`}>
+                                {isVacant ? 'Available' : isReserved ? 'Reserved' : 'Occupied'}
                               </span>
                             </button>
                           )
@@ -285,15 +349,21 @@ export default function RoomAvailability({ property, rooms, floors = [], priceFr
                       </button>
 
                       <button
+                        disabled={!vacantTrustNestBed}
                         onClick={() => {
-                          setSelectedRoomId(room.id)
-                          const vacantBed = room.beds.find(b => b.status === 'VACANT')
-                          setSelectedBedIdToBook(vacantBed?.id || '')
-                          setShowBookingModal(true)
+                          if (vacantTrustNestBed) {
+                            setSelectedRoomId(room.id)
+                            setSelectedBedIdToBook(vacantTrustNestBed.id)
+                            setShowBookingModal(true)
+                          }
                         }}
-                        className="text-xs font-bold px-3.5 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary-dark text-white transition-all cursor-pointer shadow-premium-sm"
+                        className={`text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-premium-sm ${
+                          vacantTrustNestBed
+                            ? 'bg-brand-primary hover:bg-brand-primary-dark text-white cursor-pointer'
+                            : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                        }`}
                       >
-                        Book
+                        {vacantTrustNestBed ? 'Book Bed' : 'Full / Owner'}
                       </button>
                     </div>
 

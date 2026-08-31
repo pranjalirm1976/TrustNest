@@ -24,6 +24,7 @@ interface ParsedRoomInput {
   hasWashroom: boolean
   hasAc: boolean
   hasBalcony: boolean
+  beds?: { identifier: string; status?: string; isTrustNestInventory?: boolean }[]
 }
 
 /**
@@ -239,6 +240,7 @@ export async function registerProperty(formData: FormData) {
             hasWashroom: Boolean(rm.hasWashroom),
             hasAc: Boolean(rm.hasAc),
             hasBalcony: Boolean(rm.hasBalcony),
+            beds: Array.isArray(rm.beds) ? rm.beds : undefined,
           })
         }
       } catch (err: any) {
@@ -376,13 +378,25 @@ export async function registerProperty(formData: FormData) {
             })
 
             const bedData = []
-            for (let i = 0; i < rm.capacity; i++) {
-              bedData.push({
-                roomId: roomRecord.id,
-                identifier: getBedIdentifier(i),
-                status: 'VACANT',
-                isTrustNestInventory: true,
-              })
+            if (Array.isArray(rm.beds) && rm.beds.length > 0) {
+              for (let i = 0; i < rm.capacity; i++) {
+                const bConfig = rm.beds[i]
+                bedData.push({
+                  roomId: roomRecord.id,
+                  identifier: bConfig?.identifier || getBedIdentifier(i),
+                  status: (bConfig?.status === 'OCCUPIED' ? 'OCCUPIED' : bConfig?.status === 'MAINTENANCE' ? 'MAINTENANCE' : 'VACANT'),
+                  isTrustNestInventory: bConfig?.isTrustNestInventory !== undefined ? Boolean(bConfig.isTrustNestInventory) : true,
+                })
+              }
+            } else {
+              for (let i = 0; i < rm.capacity; i++) {
+                bedData.push({
+                  roomId: roomRecord.id,
+                  identifier: getBedIdentifier(i),
+                  status: 'VACANT',
+                  isTrustNestInventory: true,
+                })
+              }
             }
 
             if (bedData.length > 0) {

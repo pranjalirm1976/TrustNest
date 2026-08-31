@@ -151,3 +151,177 @@ export async function addRoom(floorId: string, data: { roomNumber: string; capac
     return { success: false, error: error.message || 'Failed to add room.' }
   }
 }
+
+export async function updateBedInventoryAllocation(bedId: string, isTrustNestInventory: boolean) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
+      return { success: false, error: 'Unauthorized. Must be a registered property owner.' }
+    }
+
+    const bed = await prisma.bed.findUnique({
+      where: { id: bedId },
+      include: {
+        room: {
+          include: {
+            floor: {
+              include: {
+                property: true
+              }
+            }
+          }
+        },
+        stays: {
+          where: { status: 'ACTIVE' }
+        }
+      }
+    })
+
+    if (!bed) {
+      return { success: false, error: 'Bed not found.' }
+    }
+
+    const property = bed.room.floor.property
+    if (property.ownerId !== session.user.id && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR') {
+      return { success: false, error: 'Unauthorized. You do not own this property.' }
+    }
+
+    // Protection rule: Cannot change a booked/active TrustNest bed to OWNER managed
+    if (!isTrustNestInventory && bed.isTrustNestInventory) {
+      if (bed.status === 'OCCUPIED' || bed.stays.length > 0) {
+        return {
+          success: false,
+          error: `Bed ${bed.identifier} in Room ${bed.room.roomNumber} has an active TrustNest booking and cannot be removed from TrustNest inventory.`
+        }
+      }
+    }
+
+    const oldSource = bed.isTrustNestInventory ? 'TRUSTNEST' : 'OWNER'
+    const newSource = isTrustNestInventory ? 'TRUSTNEST' : 'OWNER'
+
+    await prisma.bed.update({
+      where: { id: bedId },
+      data: { isTrustNestInventory }
+    })
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        actor: session.user.id,
+        role: session.user.role || 'OWNER',
+        action: 'INVENTORY_ALLOCATION_UPDATED',
+        entity: 'Bed',
+        entityId: bedId,
+        details: JSON.stringify({
+          propertyId: property.id,
+          propertyName: property.name,
+          roomNumber: bed.room.roomNumber,
+          bedIdentifier: bed.identifier,
+          oldSource,
+          newSource,
+          changedBy: session.user.name || session.user.email
+        })
+      }
+    }).catch(() => null)
+
+    revalidatePath(`/pg/${property.id}`)
+    revalidatePath('/search')
+    revalidatePath('/admin/rooms')
+    revalidatePath('/admin/dashboard')
+
+    return { success: true, message: `Bed ${bed.identifier} allocated to ${newSource}.` }
+  } catch (error: any) {
+    console.error('updateBedInventoryAllocation error:', error)
+    return { success: false, error: error?.message || 'Failed to update inventory allocation.' }
+  }
+}
+
+export async function bulkUpdatePropertyInventoryAllocation(
+  propertyId: string, 
+  allocations: { bedId: string; isTrustNestInventory: boolean }[]
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
+      return { success: false, error: 'Unauthorized.' }
+    }
+
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+      include: {
+        floors: {
+          include: {
+            rooms: {
+              include: {
+                beds: {
+                  include: {
+                    stays: { where: { status: 'ACTIVE' } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!property) return { success: false, error: 'Property not found' }
+    if (property.ownerId !== session.user.id && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR') {
+      return { success: false, error: 'Unauthorized. You do not own this property.' }
+    }
+
+    const allBeds = property.floors.flatMap(f => f.rooms.flatMap(r => r.beds.map(b => ({ ...b, room: r }))))
+    const bedMap = new Map(allBeds.map(b => [b.id, b]))
+
+    // Validate that none of the beds being removed from TrustNest have active bookings
+    for (const alloc of allocations) {
+      const currentBed = bedMap.get(alloc.bedId)
+      if (!currentBed) continue
+
+      if (!alloc.isTrustNestInventory && currentBed.isTrustNestInventory) {
+        if (currentBed.status === 'OCCUPIED' || currentBed.stays.length > 0) {
+          return {
+            success: false,
+            error: `Bed ${currentBed.identifier} in Room ${currentBed.room.roomNumber} has an active TrustNest booking and cannot be removed from TrustNest inventory.`
+          }
+        }
+      }
+    }
+
+    // Execute atomic update
+    await prisma.$transaction(
+      allocations.map(alloc => 
+        prisma.bed.update({
+          where: { id: alloc.bedId },
+          data: { isTrustNestInventory: alloc.isTrustNestInventory }
+        })
+      )
+    )
+
+    // Log audit entry
+    await prisma.auditLog.create({
+      data: {
+        actor: session.user.id,
+        role: session.user.role || 'OWNER',
+        action: 'INVENTORY_ALLOCATION_UPDATED',
+        entity: 'Property',
+        entityId: propertyId,
+        details: JSON.stringify({
+          propertyName: property.name,
+          totalUpdated: allocations.length,
+          changedBy: session.user.name || session.user.email
+        })
+      }
+    }).catch(() => null)
+
+    revalidatePath(`/pg/${propertyId}`)
+    revalidatePath('/search')
+    revalidatePath('/admin/rooms')
+    revalidatePath('/admin/dashboard')
+
+    return { success: true, message: 'Inventory allocation updated successfully.' }
+  } catch (error: any) {
+    console.error('bulkUpdatePropertyInventoryAllocation error:', error)
+    return { success: false, error: error?.message || 'Failed to update inventory allocations.' }
+  }
+}
