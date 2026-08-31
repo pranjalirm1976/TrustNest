@@ -166,9 +166,16 @@ export const authOptions: NextAuthOptions = {
       }
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true
+      clientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+      clientSecret: (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+      allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          prompt: 'select_account',
+          access_type: 'offline',
+          response_type: 'code'
+        }
+      }
     })
   ],
   session: {
@@ -222,7 +229,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        token.role = user.role
+        token.role = user.role || 'TENANT'
         token.email = user.email
         token.name = user.name
       }
@@ -237,15 +244,18 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (_) {}
       }
+      if (!token.role) {
+        token.role = 'TENANT'
+      }
       return token
     },
     async session({ session, token }) {
       if (token) {
         session.user = {
-          id: token.id,
+          id: (token.id as string) || (token.sub as string),
           email: token.email as string,
           name: token.name as string,
-          role: token.role
+          role: (token.role as Role) || 'TENANT'
         }
       }
       return session
@@ -255,8 +265,15 @@ export const authOptions: NextAuthOptions = {
     signIn: '/tenant/login',
     error: '/tenant/login'
   },
-  secret: process.env.NEXTAUTH_SECRET || 'trustnest-super-secure-jwt-production-secret-key-32-chars',
-  debug: false
+  secret: (process.env.NEXTAUTH_SECRET || 'trustnest-super-secure-jwt-production-secret-key-32-chars').trim(),
+  logger: {
+    error(code, metadata) {
+      console.error('[NextAuth Error]', code, metadata)
+    },
+    warn(code) {
+      console.warn('[NextAuth Warn]', code)
+    }
+  }
 }
 
 export default authOptions
