@@ -18,6 +18,10 @@ model User {
   passwordHash        String
   phone               String?
   phoneVerified       Boolean             @default(false)
+  mobileVerified      Boolean             @default(false)
+  mobileVerifiedAt    DateTime?
+  emailVerified       DateTime?
+  emailVerifiedAt     DateTime?
   genderEligibility   String?             // "MALE" | "FEMALE" | "OTHER" | null
   dateOfBirth         DateTime?
   role                String              @default("TENANT") // "TENANT" | "OWNER" | "SUPER_ADMIN" | "INSPECTOR"
@@ -681,4 +685,23 @@ model AuditLog {
   @@index([actor])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+model OtpVerification {
+  id          String    @id @default(cuid())
+  target      String    // Email address or formatted mobile number (e.g. +919876543210)
+  type        String    // "EMAIL" | "PHONE"
+  otpHash     String    // Stored hash or demo code
+  status      String    @default("PENDING") // "PENDING" | "VERIFIED" | "EXPIRED" | "FAILED"
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  resendAfter DateTime?
+  authToken   String?   @unique // Secure one-time auth token for NextAuth session handshake
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([target, type, status])
+  @@map("otp_verifications")
 }

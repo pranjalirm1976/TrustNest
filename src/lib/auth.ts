@@ -45,10 +45,54 @@ export const authOptions: NextAuthOptions = {
         password: {
           label: 'Password',
           type: 'password'
+        },
+        otpAuthToken: {
+          label: 'OTP Auth Token',
+          type: 'text'
         }
       },
-      async authorize(credentials) {
+      async authorize(credentials: any) {
         try {
+          // 0. Handle One-Time Verified OTP Handshake Token
+          if (credentials?.otpAuthToken) {
+            const otpRecord = await prisma.otpVerification.findUnique({
+              where: { authToken: credentials.otpAuthToken }
+            })
+
+            if (!otpRecord || otpRecord.status !== 'VERIFIED') {
+              throw new Error('Invalid or expired OTP authentication session.')
+            }
+
+            // Invalidate the one-time authToken immediately
+            await prisma.otpVerification.update({
+              where: { id: otpRecord.id },
+              data: { authToken: null }
+            }).catch(() => null)
+
+            // Resolve verified user by email or phone
+            let otpUser = null
+            if (otpRecord.type === 'EMAIL') {
+              otpUser = await prisma.user.findUnique({
+                where: { email: otpRecord.target }
+              })
+            } else {
+              otpUser = await prisma.user.findFirst({
+                where: { phone: otpRecord.target }
+              })
+            }
+
+            if (!otpUser) {
+              throw new Error('User account not found for verified OTP.')
+            }
+
+            return {
+              id: otpUser.id,
+              email: otpUser.email,
+              name: otpUser.name,
+              role: otpUser.role as Role
+            }
+          }
+
           if (!credentials?.email) {
             throw new Error('Email is required')
           }

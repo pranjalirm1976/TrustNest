@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession, signIn } from 'next-auth/react'
 import { bookBed } from '@/actions/booking.actions'
+import { sendOtpAction, verifyOtpAction } from '@/actions/otp.actions'
 import { 
   X, 
   Bed, 
@@ -95,13 +96,20 @@ export default function BookingModal({
   const [durationMonths, setDurationMonths] = useState<number>(6)
   const [termsAccepted, setTermsAccepted] = useState<boolean>(true)
 
-  // Auth mode for anonymous users: 'quick' | 'login' | 'register'
-  const [authTab, setAuthTab] = useState<'quick' | 'login' | 'register'>('quick')
+  // Auth mode for anonymous users: 'quick' | 'otp' | 'login' | 'register'
+  const [authTab, setAuthTab] = useState<'quick' | 'otp' | 'login' | 'register'>('otp')
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [guestPassword, setGuestPassword] = useState('')
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
+
+  // Booking OTP states
+  const [bookingOtpType, setBookingOtpType] = useState<'EMAIL' | 'PHONE'>('EMAIL')
+  const [bookingOtpTarget, setBookingOtpTarget] = useState('')
+  const [bookingOtpCode, setBookingOtpCode] = useState('')
+  const [isBookingOtpSent, setIsBookingOtpSent] = useState(false)
+  const [bookingOtpTimer, setBookingOtpTimer] = useState(0)
 
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -127,6 +135,56 @@ export default function BookingModal({
       setSelectedBedId(vacant[0].id)
     } else {
       setSelectedBedId('')
+    }
+  }
+
+  // Handle OTP Send in Booking Modal
+  const handleSendBookingOtp = async () => {
+    if (!bookingOtpTarget.trim()) {
+      setErrorMsg(bookingOtpType === 'EMAIL' ? 'Please enter your email.' : 'Please enter your mobile number.')
+      return
+    }
+    setIsLoading(true)
+    setErrorMsg('')
+    try {
+      const res = await sendOtpAction(bookingOtpTarget.trim(), bookingOtpType)
+      if (!res.success) {
+        setErrorMsg(res.message || res.error || 'Failed to send verification OTP.')
+      } else {
+        setIsBookingOtpSent(true)
+        setBookingOtpTimer(res.resendInSeconds || 30)
+      }
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Failed to send OTP')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle OTP Verify in Booking Modal
+  const handleVerifyBookingOtp = async () => {
+    if (!bookingOtpCode || bookingOtpCode.trim().length !== 6) {
+      setErrorMsg('Please enter the 6-digit OTP code.')
+      return
+    }
+    setIsLoading(true)
+    setErrorMsg('')
+    try {
+      const res = await verifyOtpAction(bookingOtpTarget.trim(), bookingOtpType, bookingOtpCode.trim())
+      if (!res.success || !res.authToken) {
+        setErrorMsg(res.message || res.error || 'Invalid OTP code.')
+        setIsLoading(false)
+        return
+      }
+
+      await signIn('credentials', {
+        otpAuthToken: res.authToken,
+        redirect: false
+      })
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Verification failed')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -559,6 +617,15 @@ export default function BookingModal({
                     <div className="flex border border-slate-200 rounded-xl p-1 bg-slate-50 gap-1">
                       <button
                         type="button"
+                        onClick={() => setAuthTab('otp')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                          authTab === 'otp' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        📱 Email / Mobile OTP
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setAuthTab('quick')}
                         className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
                           authTab === 'quick' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-500'
@@ -573,18 +640,96 @@ export default function BookingModal({
                           authTab === 'login' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-500'
                         }`}
                       >
-                        Sign In
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAuthTab('register')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                          authTab === 'register' ? 'bg-white text-brand-primary shadow-sm' : 'text-slate-500'
-                        }`}
-                      >
-                        New Resident
+                        Password
                       </button>
                     </div>
+
+                    {authTab === 'otp' && (
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBookingOtpType('EMAIL')
+                              setIsBookingOtpSent(false)
+                              setBookingOtpCode('')
+                            }}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors ${
+                              bookingOtpType === 'EMAIL' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500'
+                            }`}
+                          >
+                            Email OTP
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBookingOtpType('PHONE')
+                              setIsBookingOtpSent(false)
+                              setBookingOtpCode('')
+                            }}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors ${
+                              bookingOtpType === 'PHONE' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500'
+                            }`}
+                          >
+                            Mobile OTP
+                          </button>
+                        </div>
+
+                        {!isBookingOtpSent ? (
+                          <div className="flex gap-2">
+                            <input
+                              type={bookingOtpType === 'EMAIL' ? 'email' : 'tel'}
+                              placeholder={bookingOtpType === 'EMAIL' ? 'Enter email (e.g. name@domain.com)' : '+91 98765 43210'}
+                              value={bookingOtpTarget}
+                              onChange={(e) => setBookingOtpTarget(e.target.value)}
+                              className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
+                            />
+                            <button
+                              type="button"
+                              disabled={isLoading || !bookingOtpTarget}
+                              onClick={handleSendBookingOtp}
+                              className="bg-brand-primary hover:bg-brand-primary-dark text-white font-bold text-xs px-3 py-2 rounded-xl disabled:opacity-50"
+                            >
+                              Send OTP
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-500 font-medium">OTP sent to: <strong className="text-slate-800">{bookingOtpTarget}</strong></span>
+                              <button
+                                type="button"
+                                onClick={() => setIsBookingOtpSent(false)}
+                                className="text-indigo-600 font-bold hover:underline"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                maxLength={6}
+                                placeholder="6-digit OTP"
+                                value={bookingOtpCode}
+                                onChange={(e) => setBookingOtpCode(e.target.value.replace(/\D/g, ''))}
+                                className="flex-1 text-center font-mono text-sm tracking-widest bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold"
+                              />
+                              <button
+                                type="button"
+                                disabled={isLoading || bookingOtpCode.length !== 6}
+                                onClick={handleVerifyBookingOtp}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl disabled:opacity-50"
+                              >
+                                Verify &amp; Continue
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-slate-400 text-center">
+                              Demo Mode OTP: <strong className="font-bold text-amber-700">123456</strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {authTab === 'quick' && (
                       <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between gap-2">
