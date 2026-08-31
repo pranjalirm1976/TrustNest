@@ -121,15 +121,11 @@ export const authOptions: NextAuthOptions = {
         }
       }
     }),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? [
-          GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true
-          })
-        ]
-      : [])
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      allowDangerousEmailAccountLinking: true
+    })
   ],
   session: {
     strategy: 'jwt',
@@ -142,39 +138,36 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
         try {
-          // Auto-create or update user on first Google login
-          const email = user.email?.toLowerCase().trim() || ''
-          
-          // Determine role by email pattern
-          const isSuperAdmin = 
-            email.includes('admin') || 
-            email.includes('pranjali') || 
-            email === 'admin@trustnest.in' || 
-            email === 'admin@trustnest.com'
+          const email = user.email?.toLowerCase().trim()
+          if (!email) return false
 
-          const isOwner = 
-            email.includes('owner') || 
-            email.includes('rajesh') || 
-            email.includes('emerald') || 
-            email === 'rajesh@emeraldelite.com'
-
-          const role: Role = isSuperAdmin ? 'SUPER_ADMIN' : isOwner ? 'OWNER' : 'TENANT'
-
-          // Upsert user (create if doesn't exist, update if exists)
-          const dbUser = await prisma.user.upsert({
-            where: { email },
-            update: {
-              name: user.name || undefined
-            },
-            create: {
-              email,
-              name: user.name || 'Google User',
-              role,
-              passwordHash: '' // No password for OAuth users
-            }
+          // 1. Check if user already exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email }
           }).catch(() => null)
 
-          return !!dbUser
+          if (existingUser) {
+            // Existing user: sign in with their existing role without altering permissions
+            user.id = existingUser.id
+            user.role = existingUser.role as Role
+            user.name = existingUser.name || user.name || 'Resident User'
+            return true
+          }
+
+          // 2. New user from Google Sign-In: strictly create as USER / TENANT role
+          const newUser = await prisma.user.create({
+            data: {
+              email,
+              name: user.name || 'Google User',
+              role: 'TENANT', // Strict Resident / User role
+              passwordHash: '', // No password for OAuth users
+            }
+          })
+
+          user.id = newUser.id
+          user.role = newUser.role as Role
+          user.name = newUser.name
+          return true
         } catch (error) {
           console.error('Google sign-in error:', error)
           return false
@@ -188,6 +181,14 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role
         token.email = user.email
         token.name = user.name
+      }
+      // Ensure token always has valid id and role resolved from database
+      if ((!token.id || !token.role) && token.email) {
+        const dbUser = await prisma.user.findUnique({ where: { email: token.email } }).catch(() => null)
+        if (dbUser) {
+          token.id = dbUser.id
+          token.role = dbUser.role as Role
+        }
       }
       return token
     },
@@ -204,8 +205,8 @@ export const authOptions: NextAuthOptions = {
     }
   },
   pages: {
-    signIn: '/admin/login',
-    error: '/admin/login'
+    signIn: '/tenant/login',
+    error: '/tenant/login'
   },
   secret: process.env.NEXTAUTH_SECRET || 'trustnest-super-secure-jwt-production-secret-key-32-chars',
   debug: process.env.NODE_ENV === 'development'
