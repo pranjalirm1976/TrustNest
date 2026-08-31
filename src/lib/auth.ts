@@ -1,5 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { Role } from './types'
@@ -119,7 +120,16 @@ export const authOptions: NextAuthOptions = {
           throw error
         }
       }
-    })
+    }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true
+          })
+        ]
+      : [])
   ],
   session: {
     strategy: 'jwt',
@@ -129,6 +139,49 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60 // 30 days
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        try {
+          // Auto-create or update user on first Google login
+          const email = user.email?.toLowerCase().trim() || ''
+          
+          // Determine role by email pattern
+          const isSuperAdmin = 
+            email.includes('admin') || 
+            email.includes('pranjali') || 
+            email === 'admin@trustnest.in' || 
+            email === 'admin@trustnest.com'
+
+          const isOwner = 
+            email.includes('owner') || 
+            email.includes('rajesh') || 
+            email.includes('emerald') || 
+            email === 'rajesh@emeraldelite.com'
+
+          const role: Role = isSuperAdmin ? 'SUPER_ADMIN' : isOwner ? 'OWNER' : 'TENANT'
+
+          // Upsert user (create if doesn't exist, update if exists)
+          const dbUser = await prisma.user.upsert({
+            where: { email },
+            update: {
+              name: user.name || undefined
+            },
+            create: {
+              email,
+              name: user.name || 'Google User',
+              role,
+              passwordHash: '' // No password for OAuth users
+            }
+          }).catch(() => null)
+
+          return !!dbUser
+        } catch (error) {
+          console.error('Google sign-in error:', error)
+          return false
+        }
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

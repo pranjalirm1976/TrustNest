@@ -254,3 +254,157 @@ export function generateComplaintEmail(params: ComplaintNotificationParams): { s
   const text = `TrustNest Complaint: ${params.complaintTitle} at ${params.propertyName}. Deadline: ${params.slaDeadline}`
   return { subject, html, text }
 }
+
+export function generatePhoneOTPVerificationEmail(params: any): { subject: string; html: string; text: string } {
+  const subject = `Your TrustNest Phone Verification OTP`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">Phone Verification Required</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello ${params.userName},<br>
+      Your phone verification code is ready!
+    </p>
+    <div class="highlight-box" style="text-align: center; background: ${params.isDemoMode ? '#fef3c7' : '#f1f5f9'}; border-left: 4px solid ${params.isDemoMode ? '#f59e0b' : '#3b82f6'};">
+      <p style="margin: 0; font-size: 12px; color: #64748b;">Your One-Time Password (OTP)</p>
+      <p style="margin: 12px 0 0 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #0f172a; font-family: 'Courier New', monospace;">
+        ${params.otp}
+      </p>
+      ${params.isDemoMode ? '<p style="margin: 8px 0 0 0; font-size: 11px; color: #92400e;">Demo Mode - No SMS Sent</p>' : ''}
+    </div>
+    <p style="font-size: 12px; color: #64748b; margin-top: 16px;">
+      <strong>Phone:</strong> ${params.phone}<br>
+      <strong>Valid for:</strong> 5 minutes
+    </p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 16px;">
+      If you didn't request this code, please ignore this email.
+    </p>
+    `
+  )
+  const text = `Your TrustNest OTP: ${params.otp}. Valid for 5 minutes. Phone: ${params.phone}. ${params.isDemoMode ? 'Demo Mode' : ''}`
+  return { subject, html, text }
+}
+
+export function generateIdentityVerificationApprovedEmail(params: any): { subject: string; html: string; text: string } {
+  const subject = `✓ Your Identity Verification is Approved`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #10b981; margin-top: 0;">✓ Verification Approved</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello ${params.userName},<br>
+      Great news! Your identity verification has been approved.
+    </p>
+    <div class="highlight-box" style="background: #ecfdf5; border-left: 4px solid #10b981;">
+      <p style="margin: 0; font-weight: bold; color: #065f46;">Document Verified ✓</p>
+      <p style="margin: 8px 0 0 0; font-size: 13px; color: #047857;">
+        <strong>Document Type:</strong> ${params.documentType}<br>
+        <strong>Approved on:</strong> ${params.approvalDate}
+      </p>
+    </div>
+    <p style="font-size: 13px; color: #475569; margin-top: 16px;">
+      Your account is now fully verified. You can proceed with bookings on TrustNest without any restrictions.
+    </p>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="http://localhost:3000/tenant" class="btn">Browse Properties &rarr;</a>
+    </div>
+    `
+  )
+  const text = `Your identity verification is approved! Document: ${params.documentType}. You can now book properties on TrustNest.`
+  return { subject, html, text }
+}
+
+export function generateIdentityVerificationRejectedEmail(params: any): { subject: string; html: string; text: string } {
+  const subject = `Identity Verification – Action Required`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #dc2626; margin-top: 0;">Identity Verification – Action Required</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello ${params.userName},<br>
+      We couldn't verify your identity with the submitted document.
+    </p>
+    <div class="highlight-box" style="background: #fef2f2; border-left: 4px solid #dc2626;">
+      <p style="margin: 0; font-weight: bold; color: #7f1d1d;">Document Rejected</p>
+      <p style="margin: 8px 0 0 0; font-size: 13px; color: #991b1b;">
+        <strong>Document Type:</strong> ${params.documentType}<br>
+        <strong>Reason:</strong> ${params.rejectionReason}
+      </p>
+    </div>
+    <p style="font-size: 13px; color: #475569; margin-top: 16px;">
+      Please upload a clear, legible copy of your document and try again. Make sure:
+    </p>
+    <ul style="font-size: 12px; color: #475569; margin: 8px 0;">
+      <li>All text is readable and not cut off</li>
+      <li>The document is not expired</li>
+      <li>The photo is clear and in good lighting</li>
+    </ul>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="http://localhost:3000/auth/identity-verify" class="btn">Resubmit Document &rarr;</a>
+    </div>
+    `
+  )
+  const text = `Your identity verification was rejected. Reason: ${params.rejectionReason}. Please resubmit a clear document.`
+  return { subject, html, text }
+}
+
+export function generateInventoryAgreementCreatedEmail(params: any): { subject: string; html: string; text: string } {
+  const subject = `New Inventory Agreement Pending Review – ${params.propertyName}`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #4f46e5; margin-top: 0;">New Inventory Agreement</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello ${params.ownerName},<br>
+      TrustNest has prepared an inventory allocation agreement for your property.
+    </p>
+    <div class="highlight-box">
+      <p style="margin: 0;"><strong>Property:</strong> ${params.propertyName}</p>
+      <p style="margin: 8px 0 0 0;"><strong>Allocated Beds:</strong> ${params.bedCount}</p>
+      <p style="margin: 8px 0 0 0;"><strong>Agreement Period:</strong> ${params.agreementStartDate} to ${params.agreementEndDate || 'Ongoing'}</p>
+    </div>
+    <p style="font-size: 13px; color: #475569; margin-top: 16px; background: #ecfdf5; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+      <strong>Commission Split:</strong> 90% Owner / 10% TrustNest<br>
+      Per successful booking
+    </p>
+    <p style="font-size: 13px; color: #475569; margin-top: 16px;">
+      Please review and accept the agreement to make your beds available for bookings on TrustNest.
+    </p>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="${params.dashboardUrl}" class="btn">Review Agreement &rarr;</a>
+    </div>
+    `
+  )
+  const text = `New inventory agreement for ${params.propertyName}: ${params.bedCount} beds allocated. Commission: 90% owner / 10% TrustNest. Please review.`
+  return { subject, html, text }
+}
+
+export function generateInventoryAgreementAcceptedEmail(params: any): { subject: string; html: string; text: string } {
+  const subject = `✓ Inventory Agreement Accepted – ${params.propertyName}`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #10b981; margin-top: 0;">✓ Agreement Activated</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello ${params.ownerName},<br>
+      Thank you for accepting the inventory agreement!
+    </p>
+    <div class="highlight-box" style="background: #ecfdf5; border-left: 4px solid #10b981;">
+      <p style="margin: 0; font-weight: bold; color: #065f46;">Status: ACTIVE</p>
+      <p style="margin: 8px 0 0 0;">
+        <strong>Property:</strong> ${params.propertyName}<br>
+        <strong>Available Beds:</strong> ${params.bedCount}
+      </p>
+    </div>
+    <p style="font-size: 13px; color: #475569; margin-top: 16px;">
+      Your beds are now live on TrustNest! You'll start earning commissions as bookings are made. 
+      Track your earnings and manage your property from your dashboard.
+    </p>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="${params.dashboardUrl}" class="btn">View Dashboard &rarr;</a>
+    </div>
+    `
+  )
+  const text = `Your inventory agreement is now active! Your ${params.bedCount} beds are available for booking on TrustNest.`
+  return { subject, html, text }
+}

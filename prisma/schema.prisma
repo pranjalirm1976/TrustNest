@@ -8,70 +8,81 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id           String         @id @default(cuid())
-  name         String
-  email        String         @unique
-  passwordHash String
-  role         String         @default("TENANT") // "TENANT" | "OWNER" | "SUPER_ADMIN" | "INSPECTOR"
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                  String              @id @default(cuid())
+  name                String
+  email               String              @unique
+  passwordHash        String
+  phone               String?
+  phoneVerified       Boolean             @default(false)
+  genderEligibility   String?             // "MALE" | "FEMALE" | "OTHER" | null
+  dateOfBirth         DateTime?
+  role                String              @default("TENANT") // "TENANT" | "OWNER" | "SUPER_ADMIN" | "INSPECTOR"
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
   
   // Relations
-  properties   Property[]     @relation("PropertyOwner")
-  stays        ResidentStay[]
-  bookings     Booking[]
-  foodRatings  FoodRating[]
-  complaints   Complaint[]
-  comments     ComplaintComment[]
-  reviews      PropertyReview[]
-  notifications Notification[]
-  subscriptions OwnerSubscription[]
-  payoutAccount OwnerPayoutAccount?
-  payments     Payment[]      @relation("UserPayments")
-  receivedPayments Payment[]  @relation("OwnerReceivedPayments")
-  chatThreadsAsUser ChatThread[] @relation("UserChatThreads")
-  chatThreadsAsOwner ChatThread[] @relation("OwnerChatThreads")
-  chatMessages ChatMessage[]  @relation("UserChatMessages")
+  properties          Property[]          @relation("PropertyOwner")
+  stays               ResidentStay[]
+  bookings            Booking[]
+  foodRatings         FoodRating[]
+  complaints          Complaint[]
+  comments            ComplaintComment[]
+  reviews             PropertyReview[]
+  notifications       Notification[]
+  subscriptions       OwnerSubscription[]
+  payoutAccount       OwnerPayoutAccount?
+  payments            Payment[]           @relation("UserPayments")
+  receivedPayments    Payment[]           @relation("OwnerReceivedPayments")
+  chatThreadsAsUser   ChatThread[]        @relation("UserChatThreads")
+  chatThreadsAsOwner  ChatThread[]        @relation("OwnerChatThreads")
+  chatMessages        ChatMessage[]       @relation("UserChatMessages")
+  phoneVerifications  PhoneVerification[]
+  identityVerification IdentityVerification?
+  inventoryAgreements InventoryAgreement[] @relation("AgreementOwner")
+  verifiedDocuments   IdentityVerification[] @relation("VerifiedDocuments")
+  auditLogsAsActor    AuditLog[]          @relation("AuditActor")
   
   @@map("users")
 }
 
 model Property {
-  id          String         @id @default(cuid())
-  ownerId     String
-  name        String
-  description String?
-  address     String
-  latitude    Float          // For discovery map rendering
-  longitude   Float          // For discovery map rendering
-  priceFrom   Float          // Displayed base price for bookings
-  gender      String         @default("UNISEX") // "MALE" | "FEMALE" | "UNISEX"
-  trustScore  Float          @default(5.0)
-  status      String         @default("PUBLISHED") // "DRAFT" | "PENDING_VERIFICATION" | "VERIFIED" | "PUBLISHED" | "REJECTED"
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                   String              @id @default(cuid())
+  ownerId              String
+  name                 String
+  description          String?
+  address              String
+  latitude             Float               // For discovery map rendering
+  longitude            Float               // For discovery map rendering
+  priceFrom            Float               // Displayed base price for bookings
+  gender               String              @default("UNISEX") // "MALE" | "FEMALE" | "UNISEX"
+  eligibilityRule      String              @default("UNISEX") // "MALE_ONLY" | "FEMALE_ONLY" | "UNISEX"
+  trustScore           Float               @default(5.0)
+  status               String              @default("PUBLISHED") // "DRAFT" | "PENDING_VERIFICATION" | "VERIFIED" | "PUBLISHED" | "REJECTED"
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
   
   // Relations
-  owner       User           @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  floors      Floor[]
-  images      PropertyImage[]
-  foodMenus   FoodMenu[]
-  complaints  Complaint[]
-  reviews     PropertyReview[]
-  flags       PropertyFlag[]
-  cleaning    CleaningTask[]
-  amenities   Amenity[]
-  services    NearbyService[]
-  bookings    Booking[]
-  trustScoreLogs TrustScoreLog[]
-  threeDCaptures Room3DCapture[]
-  subscriptions OwnerSubscription[]
-  payments      Payment[]
-  chatThreads   ChatThread[]
+  owner                User                @relation("PropertyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  floors               Floor[]
+  images               PropertyImage[]
+  foodMenus            FoodMenu[]
+  complaints           Complaint[]
+  reviews              PropertyReview[]
+  flags                PropertyFlag[]
+  cleaning             CleaningTask[]
+  amenities            Amenity[]
+  services             NearbyService[]
+  bookings             Booking[]
+  trustScoreLogs       TrustScoreLog[]
+  threeDCaptures       Room3DCapture[]
+  subscriptions        OwnerSubscription[]
+  payments             Payment[]
+  chatThreads          ChatThread[]
+  inventoryAgreements  InventoryAgreement[] @relation("PropertyAgreement")
   
   @@map("properties")
 }
@@ -91,19 +102,20 @@ model PropertyImage {
 }
 
 model Floor {
-  id         String   @id @default(cuid())
-  propertyId String
-  level      Int      // 0 for Ground, 1 for First Floor, etc.
-  name       String   // "Ground Floor", "First Floor", etc.
-  layoutUrl  String?  // Architectural blueprint image URL
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String    @id @default(cuid())
+  propertyId      String
+  level           Int       // 0 for Ground, 1 for First Floor, etc.
+  name            String    // "Ground Floor", "First Floor", etc.
+  layoutUrl       String?   // Architectural blueprint image URL
+  eligibilityRule String?   // "MALE_ONLY" | "FEMALE_ONLY" | "UNISEX" | null (null means inherit from property)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   
   // Relations
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  rooms      Room[]
-  facilities FloorFacility[]
-  threeDCaptures Room3DCapture[]
+  property        Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rooms           Room[]
+  facilities      FloorFacility[]
+  threeDCaptures  Room3DCapture[]
   
   @@unique([propertyId, level])
   @@map("floors")
@@ -120,23 +132,24 @@ model FloorFacility {
 }
 
 model Room {
-  id           String   @id @default(cuid())
-  floorId      String
-  roomNumber   String   // "101", "102", "Reception", etc.
-  capacity     Int      // Maximum number of beds/occupants
-  sharingType  String?  @default("DOUBLE") // "SINGLE" | "DOUBLE" | "TRIPLE" | "FOUR" | "FACILITY"
-  hasWashroom  Boolean  @default(false)
-  hasAc        Boolean  @default(false)
-  hasBalcony   Boolean  @default(false)
-  pricePerBed  Float?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id @default(cuid())
+  floorId         String
+  roomNumber      String    // "101", "102", "Reception", etc.
+  capacity        Int       // Maximum number of beds/occupants
+  sharingType     String?   @default("DOUBLE") // "SINGLE" | "DOUBLE" | "TRIPLE" | "FOUR" | "FACILITY"
+  eligibilityRule String?   // "MALE_ONLY" | "FEMALE_ONLY" | "UNISEX" | null (null means inherit from floor/property)
+  hasWashroom     Boolean   @default(false)
+  hasAc           Boolean   @default(false)
+  hasBalcony      Boolean   @default(false)
+  pricePerBed     Float?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   
   // Relations
-  floor        Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  beds         Bed[]
-  amenities    RoomAmenity[]
-  threeDCaptures Room3DCapture[]
+  floor           Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  beds            Bed[]
+  amenities       RoomAmenity[]
+  threeDCaptures  Room3DCapture[]
   
   @@unique([floorId, roomNumber])
   @@map("rooms")
@@ -382,21 +395,24 @@ model Notification {
 }
 
 model Booking {
-  id          String         @id @default(cuid())
-  userId      String
-  propertyId  String
-  bedId       String?
-  startDate   DateTime
-  endDate     DateTime?
-  status      String         @default("CONFIRMED") // "PENDING" | "CONFIRMED" | "CANCELLED" | "PAYMENT_FAILED"
-  totalAmount Float
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                  String          @id @default(cuid())
+  userId              String
+  propertyId          String
+  bedId               String?
+  startDate           DateTime
+  endDate             DateTime?
+  status              String          @default("CONFIRMED") // "PENDING" | "CONFIRMED" | "CANCELLED" | "PAYMENT_FAILED"
+  phoneVerified       Boolean         @default(false)
+  identityVerified    Boolean         @default(false)
+  genderEligibility   String?         // User's gender eligibility at time of booking
+  totalAmount         Float
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  payments    Payment[]
-  splits      PaymentSplit[]
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property            Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  payments            Payment[]
+  splits              PaymentSplit[]
 
   @@map("bookings")
 }
@@ -585,4 +601,83 @@ model Room3DCapture {
   room                  Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@map("room_3d_captures")
+}
+
+// ===================================
+// NEW MENTOR REQUIREMENT MODELS
+// ===================================
+
+model PhoneVerification {
+  id          String    @id @default(cuid())
+  userId      String
+  phone       String
+  otp         String
+  status      String    @default("PENDING") // "PENDING" | "VERIFIED" | "EXPIRED"
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, phone])
+  @@map("phone_verifications")
+}
+
+model IdentityVerification {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  documentType        String    // "AADHAR" | "PAN" | "PASSPORT" | "DRIVING_LICENSE"
+  documentUrl         String    // Secure file storage
+  status              String    @default("PENDING") // "PENDING" | "VERIFIED" | "REJECTED"
+  verifiedAt          DateTime?
+  verifiedBy          String?   // Admin ID
+  rejectionReason     String?
+  createdAt           DateTime  @default(now())
+  
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin               User?     @relation("VerifiedDocuments", fields: [verifiedBy], references: [id])
+  
+  @@map("identity_verifications")
+}
+
+model InventoryAgreement {
+  id                  String    @id @default(cuid())
+  propertyId          String
+  ownerId             String
+  trustNestBedCount   Int
+  selectedBeds        String    // JSON array of bed IDs
+  agreementStartDate  DateTime
+  agreementEndDate    DateTime?
+  status              String    @default("ACTIVE") // "ACTIVE" | "EXPIRED" | "CANCELLED"
+  agreementText       String    // Configurable terms
+  acceptedAt          DateTime
+  acceptedBy          String
+  agreementVersion    Int       @default(1)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  property            Property  @relation("PropertyAgreement", fields: [propertyId], references: [id], onDelete: Cascade)
+  owner               User      @relation("AgreementOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  @@unique([propertyId, ownerId])
+  @@map("inventory_agreements")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  actor       String    // User ID
+  role        String    // User role at time of action
+  action      String    // PG_REGISTERED, PHONE_VERIFIED, ID_VERIFIED, BOOKING_CREATED, etc.
+  entity      String    // Entity type: Property, User, Booking, etc.
+  entityId    String    // Entity ID
+  details     String?   // JSON additional details
+  timestamp   DateTime  @default(now())
+  ipAddress   String?
+  
+  actorUser   User      @relation("AuditActor", fields: [actor], references: [id], onDelete: SetNull)
+  
+  @@index([entityId])
+  @@index([actor])
+  @@index([timestamp])
+  @@map("audit_logs")
 }

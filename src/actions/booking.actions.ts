@@ -189,10 +189,44 @@ export async function bookBed(input: BookBedInput) {
       }
 
       const room = bed.room
-      const property = room.floor.property
+      const floor = room.floor
+      const property = floor.property
 
       if (property.id !== input.propertyId) {
         throw new Error('Property mismatch for the selected bed.')
+      }
+
+      // **NEW: Enforce Gender Eligibility** 
+      // Check eligibility rules at Room → Floor → Property level
+      const userGender = residentUser?.genderEligibility // e.g., "MALE", "FEMALE", "OTHER"
+      let eligibilityRule = room.eligibilityRule || floor.eligibilityRule || property.eligibilityRule
+      
+      if (eligibilityRule && eligibilityRule !== 'UNISEX' && userGender) {
+        // Parse eligibility rule (e.g., "MALE_ONLY" → "MALE")
+        const ruleGender = eligibilityRule.split('_')[0] // "MALE_ONLY" → "MALE"
+        
+        if (userGender !== ruleGender && userGender !== 'OTHER') {
+          throw new Error(
+            `This property requires residents to be ${ruleGender}. Your profile shows ${userGender}.`
+          )
+        }
+      }
+
+      // **NEW: Require Phone Verification for certain properties**
+      if (property.gender !== 'UNISEX' && !residentUser?.phoneVerified) {
+        throw new Error('Phone verification is required to book in gender-specific properties.')
+      }
+
+      // **NEW: Optionally require Identity Verification**
+      // (Can be made mandatory per property or globally)
+      const identityVerification = await tx.identityVerification.findUnique({
+        where: { userId }
+      }).catch(() => null)
+
+      if (property.status === 'VERIFIED' && identityVerification?.status !== 'VERIFIED') {
+        // For premium/verified properties, identity verification might be required
+        // For now, just log it for future use
+        console.log(`Identity verification pending for user ${userId} at premium property ${property.id}`)
       }
 
       // Calculate rent

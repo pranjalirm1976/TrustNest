@@ -8,7 +8,12 @@ import {
   PGVerificationApprovedParams,
   PGVerificationActionRequiredParams,
   SuperAdminPGAlertParams,
-  ComplaintNotificationParams
+  ComplaintNotificationParams,
+  PhoneOTPVerificationParams,
+  IdentityVerificationApprovedParams,
+  IdentityVerificationRejectedParams,
+  InventoryAgreementCreatedParams,
+  InventoryAgreementAcceptedParams
 } from './types'
 import {
   generateUserBookingConfirmationEmail,
@@ -17,7 +22,12 @@ import {
   generatePGApprovedEmail,
   generatePGActionRequiredEmail,
   generateSuperAdminPGAlertEmail,
-  generateComplaintEmail
+  generateComplaintEmail,
+  generatePhoneOTPVerificationEmail,
+  generateIdentityVerificationApprovedEmail,
+  generateIdentityVerificationRejectedEmail,
+  generateInventoryAgreementCreatedEmail,
+  generateInventoryAgreementAcceptedEmail
 } from './templates'
 
 export class ProductionEmailService implements EmailService {
@@ -143,5 +153,30 @@ export class ProductionEmailService implements EmailService {
   async sendComplaintNotification(params: ComplaintNotificationParams): Promise<EmailResult> {
     const { subject, html, text } = generateComplaintEmail(params)
     return this.dispatchEmail(params.recipientEmail, subject, html, text)
+  }
+
+  async sendPhoneOTPVerification(params: any): Promise<EmailResult> {
+    const { subject, html, text } = generatePhoneOTPVerificationEmail(params)
+    return this.dispatchEmail(params.toEmail, subject, html, text)
+  }
+
+  async sendIdentityVerificationApproved(params: any): Promise<EmailResult> {
+    const { subject, html, text } = generateIdentityVerificationApprovedEmail(params)
+    return this.dispatchEmail(params.toEmail, subject, html, text)
+  }
+
+  async sendIdentityVerificationRejected(params: any): Promise<EmailResult> {
+    const { subject, html, text } = generateIdentityVerificationRejectedEmail(params)
+    return this.dispatchEmail(params.toEmail, subject, html, text)
+  }
+
+  async sendInventoryAgreementCreated(params: any): Promise<EmailResult> {
+    const { subject, html, text } = generateInventoryAgreementCreatedEmail(params)
+    return this.dispatchEmail(params.ownerEmail, subject, html, text)
+  }
+
+  async sendInventoryAgreementAccepted(params: any): Promise<EmailResult> {
+    const { subject, html, text } = generateInventoryAgreementAcceptedEmail(params)
+    return this.dispatchEmail(params.ownerEmail, subject, html, text)
   }
 }
