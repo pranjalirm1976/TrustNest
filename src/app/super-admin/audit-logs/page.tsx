@@ -138,9 +138,9 @@ export default function AuditLogsPage() {
     }
 
     if (filterEndDate) {
-      const endDate = new Date(filterEndDate).getTime()
+      const endDate = new Date(filterEndDate)
       endDate.setHours(23, 59, 59, 999)
-      filtered = filtered.filter(log => new Date(log.timestamp).getTime() <= endDate)
+      filtered = filtered.filter(log => new Date(log.timestamp).getTime() <= endDate.getTime())
     }
 
     // Sort

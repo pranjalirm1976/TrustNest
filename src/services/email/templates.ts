@@ -408,3 +408,35 @@ export function generateInventoryAgreementAcceptedEmail(params: any): { subject:
   const text = `Your inventory agreement is now active! Your ${params.bedCount} beds are available for booking on TrustNest.`
   return { subject, html, text }
 }
+
+export function generateBookingCancellationEmail(params: any): { subject: string; html: string; text: string } {
+  const isOwner = params.recipientRole === 'OWNER'
+  const isSuperAdmin = params.recipientRole === 'SUPER_ADMIN'
+  const subject = isOwner
+    ? `[Booking Cancelled] Room ${params.roomNumber} (Bed ${params.bedIdentifier}) – ${params.propertyName}`
+    : isSuperAdmin
+      ? `[Super Admin] Booking ${params.bookingId} Cancelled – ${params.propertyName}`
+      : `Your booking at ${params.propertyName} has been cancelled`
+
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #b91c1c; margin-top: 0;">Booking Cancelled ❌</h2>
+    <p style="font-size: 13px; color: #475569;">
+      Hello <strong>${params.userName}</strong>,<br>
+      The booking for <strong>Room ${params.roomNumber} (Bed ${params.bedIdentifier})</strong> at <strong>${params.propertyName}</strong> has been cancelled.
+    </p>
+    <div class="highlight-box" style="border-left: 4px solid #ef4444;">
+      <p style="margin: 0;"><strong>Booking ID:</strong> ${params.bookingId}</p>
+      <p style="margin: 4px 0 0 0;"><strong>Bed Status:</strong> Returned to inventory (VACANT)</p>
+      ${params.refundAmount ? `<p style="margin: 4px 0 0 0;"><strong>Refund Status:</strong> ₹${params.refundAmount} (Simulated Demo Refund processed)</p>` : ''}
+      ${params.reason ? `<p style="margin: 4px 0 0 0;"><strong>Reason:</strong> ${params.reason}</p>` : ''}
+    </div>
+    <p style="font-size: 12px; color: #64748b; margin-top: 16px;">
+      If you have questions, please reach out to TrustNest Support.
+    </p>
+    `
+  )
+  const text = `Booking ${params.bookingId} for Room ${params.roomNumber} (Bed ${params.bedIdentifier}) at ${params.propertyName} has been cancelled.`
+  return { subject, html, text }
+}

@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { getBedIdentifier } from '@/lib/property-utils'
 
 export async function updateBedStatus(bedId: string, newStatus: 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE') {
   try {
@@ -64,8 +65,20 @@ export async function updateBedStatus(bedId: string, newStatus: 'AVAILABLE' | 'O
 export async function addFloor(propertyId: string, level: number, name: string) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR')) {
+    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
       return { success: false, error: 'Unauthorized.' }
+    }
+
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId }
+    })
+
+    if (!property) {
+      return { success: false, error: 'Property not found.' }
+    }
+
+    if (property.ownerId !== session.user.id && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR') {
+      return { success: false, error: 'Unauthorized. You do not own this property.' }
     }
 
     const floor = await prisma.floor.create({
@@ -90,7 +103,7 @@ export async function addFloor(propertyId: string, level: number, name: string) 
 export async function addRoom(floorId: string, data: { roomNumber: string; capacity: number; pricePerBed?: number; hasWashroom?: boolean; hasAc?: boolean; hasBalcony?: boolean }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'INSPECTOR')) {
+    if (!session || (session.user.role !== 'OWNER' && session.user.role !== 'PG_OWNER' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR')) {
       return { success: false, error: 'Unauthorized.' }
     }
 
@@ -100,6 +113,10 @@ export async function addRoom(floorId: string, data: { roomNumber: string; capac
     })
 
     if (!floor) return { success: false, error: 'Floor not found' }
+
+    if (floor.property.ownerId !== session.user.id && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'INSPECTOR') {
+      return { success: false, error: 'Unauthorized. You do not own this property.' }
+    }
 
     const room = await prisma.room.create({
       data: {
@@ -116,8 +133,9 @@ export async function addRoom(floorId: string, data: { roomNumber: string; capac
     // Auto-create beds
     const beds = Array.from({ length: data.capacity }, (_, i) => ({
       roomId: room.id,
-      identifier: String.fromCharCode(65 + i),
-      status: 'VACANT'
+      identifier: getBedIdentifier(i),
+      status: 'VACANT',
+      isTrustNestInventory: true
     }))
 
     await prisma.bed.createMany({ data: beds })

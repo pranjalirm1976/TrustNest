@@ -13,11 +13,13 @@ import {
   IdentityVerificationApprovedParams,
   IdentityVerificationRejectedParams,
   InventoryAgreementCreatedParams,
-  InventoryAgreementAcceptedParams
+  InventoryAgreementAcceptedParams,
+  BookingCancellationEmailParams
 } from './types'
 import {
   generateUserBookingConfirmationEmail,
   generateOwnerNewBookingEmail,
+  generateBookingCancellationEmail,
   generatePGVerificationSubmittedEmail,
   generatePGApprovedEmail,
   generatePGActionRequiredEmail,
@@ -128,6 +130,11 @@ export class ProductionEmailService implements EmailService {
   async sendNewBookingNotificationToOwner(params: OwnerNewBookingParams): Promise<EmailResult> {
     const { subject, html, text } = generateOwnerNewBookingEmail(params)
     return this.dispatchEmail(params.ownerEmail, subject, html, text)
+  }
+
+  async sendBookingCancellation(params: BookingCancellationEmailParams): Promise<EmailResult> {
+    const { subject, html, text } = generateBookingCancellationEmail(params)
+    return this.dispatchEmail(params.toEmail, subject, html, text)
   }
 
   async sendPGVerificationSubmitted(params: PGVerificationSubmittedParams): Promise<EmailResult> {

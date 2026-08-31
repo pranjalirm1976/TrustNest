@@ -141,13 +141,29 @@ export async function bookBed(input: BookBedInput) {
           }
         })
 
+        // Audit Log for Failed Payment
+        await tx.auditLog.create({
+          data: {
+            actor: userId,
+            role: residentUser?.role || 'TENANT',
+            action: 'PAYMENT_FAILED',
+            entity: 'Booking',
+            entityId: booking.id,
+            details: JSON.stringify({
+              reason: input.failureReason || 'Simulated payment failure',
+              amount: rentAmount,
+              propertyId: property.id
+            })
+          }
+        })
+
         return { booking, payment, transactionId }
       })
 
       return {
         success: false,
         transactionId: failedResult.transactionId,
-        error: 'Demo Payment Failure Simulation: Transaction was not completed. No money was charged.',
+        error: 'Demo Payment Failure Simulation: Transaction was not completed. No money was charged. Bed remains vacant.',
         isDemo: true,
         data: failedResult
       }
@@ -185,7 +201,7 @@ export async function bookBed(input: BookBedInput) {
       }
 
       if (bed.status !== 'VACANT') {
-        throw new Error('This bed is already occupied or reserved. Please choose another bed.')
+        throw new Error('This bed is no longer available. Please choose another bed.')
       }
 
       const room = bed.room
@@ -196,15 +212,12 @@ export async function bookBed(input: BookBedInput) {
         throw new Error('Property mismatch for the selected bed.')
       }
 
-      // **NEW: Enforce Gender Eligibility** 
-      // Check eligibility rules at Room → Floor → Property level
-      const userGender = residentUser?.genderEligibility // e.g., "MALE", "FEMALE", "OTHER"
-      let eligibilityRule = room.eligibilityRule || floor.eligibilityRule || property.eligibilityRule
+      // **Enforce Gender Eligibility Rules**
+      const userGender = residentUser?.genderEligibility // e.g. "MALE", "FEMALE", "OTHER"
+      const eligibilityRule = room.eligibilityRule || floor.eligibilityRule || property.eligibilityRule
       
       if (eligibilityRule && eligibilityRule !== 'UNISEX' && userGender) {
-        // Parse eligibility rule (e.g., "MALE_ONLY" → "MALE")
-        const ruleGender = eligibilityRule.split('_')[0] // "MALE_ONLY" → "MALE"
-        
+        const ruleGender = eligibilityRule.split('_')[0]
         if (userGender !== ruleGender && userGender !== 'OTHER') {
           throw new Error(
             `This property requires residents to be ${ruleGender}. Your profile shows ${userGender}.`
@@ -212,21 +225,9 @@ export async function bookBed(input: BookBedInput) {
         }
       }
 
-      // **NEW: Require Phone Verification for certain properties**
+      // **Require Phone Verification for gender-specific properties**
       if (property.gender !== 'UNISEX' && !residentUser?.phoneVerified) {
         throw new Error('Phone verification is required to book in gender-specific properties.')
-      }
-
-      // **NEW: Optionally require Identity Verification**
-      // (Can be made mandatory per property or globally)
-      const identityVerification = await tx.identityVerification.findUnique({
-        where: { userId }
-      }).catch(() => null)
-
-      if (property.status === 'VERIFIED' && identityVerification?.status !== 'VERIFIED') {
-        // For premium/verified properties, identity verification might be required
-        // For now, just log it for future use
-        console.log(`Identity verification pending for user ${userId} at premium property ${property.id}`)
       }
 
       // Calculate rent
@@ -289,7 +290,7 @@ export async function bookBed(input: BookBedInput) {
           propertyId: property.id,
           bookingId: booking.id,
           amount: rentAmount,
-          status: 'PAID',
+          status: 'SUCCESS',
           paidAt: new Date(),
           paymentMethod: 'DEMO',
           paymentMode: 'DEMO',
@@ -306,8 +307,8 @@ export async function bookBed(input: BookBedInput) {
         }
       })
 
-      // 7. Create PaymentSplit for Cashfree Easy Split readiness
-      const split = await tx.paymentSplit.create({
+      // 7. Create PaymentSplit
+      await tx.paymentSplit.create({
         data: {
           paymentId: payment.id,
           bookingId: booking.id,
@@ -335,7 +336,8 @@ export async function bookBed(input: BookBedInput) {
         }
       })
 
-      // 9. Send In-App Notifications
+      // 9. Send In-App Notifications: User, Owner, Super Admin
+      // User In-App Notification
       await tx.notification.create({
         data: {
           userId,
@@ -347,19 +349,59 @@ export async function bookBed(input: BookBedInput) {
 
       const residentDisplayName = residentUser?.name || input.guestInfo?.name || 'New Resident'
       const residentDisplayEmail = residentUser?.email || input.guestInfo?.email || 'resident@trustnest.in'
+      const residentPhone = residentUser?.phone || input.guestInfo?.phone || 'Not provided'
       const moveInDateFormatted = startDate.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
       const bookingDateFormatted = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
+      // Owner In-App Notification
       if (property.ownerId) {
         await tx.notification.create({
           data: {
             userId: property.ownerId,
             title: `🔔 New Booking: Room ${room.roomNumber} - Bed ${bed.identifier}`,
-            message: `Resident: ${residentDisplayName} (${residentDisplayEmail}) | PG: ${property.name} | Room: ${room.roomNumber} | Bed: ${bed.identifier} | Booking ID: ${booking.id} | Payment ID: ${transactionId} | Amount: ₹${rentAmount.toLocaleString('en-IN')} (Payout: ₹${ownerPayout.toLocaleString('en-IN')}) | Booking Date: ${bookingDateFormatted} | Move-in: ${moveInDateFormatted}`,
+            message: `Resident: ${residentDisplayName} | Email: ${residentDisplayEmail} | Verified Phone: ${residentPhone} | PG: ${property.name} | Room: ${room.roomNumber} | Bed: ${bed.identifier} | Booking ID: ${booking.id} | Payment ID: ${transactionId} | Amount: ₹${rentAmount.toLocaleString('en-IN')} (Payout: ₹${ownerPayout.toLocaleString('en-IN')}) | Payment Status: SUCCESSFUL | Move-in Date: ${moveInDateFormatted}`,
             type: 'RENT'
           }
         })
       }
+
+      // Super Admin In-App Notifications
+      const superAdmins = await tx.user.findMany({
+        where: { role: 'SUPER_ADMIN' },
+        select: { id: true, email: true }
+      })
+
+      if (superAdmins.length > 0) {
+        await tx.notification.createMany({
+          data: superAdmins.map(admin => ({
+            userId: admin.id,
+            title: `💰 New Booking Confirmed: ${property.name}`,
+            message: `Booking ${booking.id} confirmed for ${residentDisplayName} (Bed ${bed.identifier}, Room ${room.roomNumber}). Total: ₹${rentAmount} (TrustNest fee: ₹${trustNestCommission}).`,
+            type: 'PAYMENT'
+          }))
+        })
+      }
+
+      // 10. Create Audit Log Record
+      await tx.auditLog.create({
+        data: {
+          actor: userId,
+          role: residentUser?.role || 'TENANT',
+          action: 'BOOKING_CREATED',
+          entity: 'Booking',
+          entityId: booking.id,
+          details: JSON.stringify({
+            propertyId: property.id,
+            propertyName: property.name,
+            roomId: room.id,
+            bedId: bed.id,
+            rentAmount,
+            ownerPayout,
+            trustNestCommission,
+            transactionId
+          })
+        }
+      })
 
       return {
         bookingId: booking.id,
@@ -373,18 +415,19 @@ export async function bookBed(input: BookBedInput) {
         ownerName: property.owner?.name || 'Property Owner',
         residentName: residentDisplayName,
         residentEmail: residentDisplayEmail,
-        residentPhone: input.guestInfo?.phone,
+        residentPhone,
         roomNumber: room.roomNumber,
         bedIdentifier: bed.identifier,
         rentAmount,
         trustNestCommission,
         ownerPayout,
         moveInDate: input.moveInDate || moveInDateFormatted,
-        durationMonths
+        durationMonths,
+        superAdminEmails: superAdmins.map(a => a.email)
       }
     })
 
-    // 10. SAFE NON-BLOCKING EMAIL DISPATCH (Requirement 32: email errors must NOT break confirmed bookings)
+    // 11. SAFE NON-BLOCKING EMAIL DISPATCH (User, Owner, Super Admin)
     try {
       const emailService = getEmailService()
       
@@ -401,7 +444,7 @@ export async function bookBed(input: BookBedInput) {
         amount: result.rentAmount,
         moveInDate: result.moveInDate,
         durationMonths: result.durationMonths
-      }).catch(err => console.error('[Email Dispatch] User confirmation email error:', err.message))
+      }).catch(err => console.error('[Email Dispatch] User confirmation email notice:', err?.message))
 
       // Dispatch Owner Notification Email
       if (result.ownerEmail) {
@@ -419,10 +462,10 @@ export async function bookBed(input: BookBedInput) {
           amount: result.rentAmount,
           ownerPayout: result.ownerPayout,
           moveInDate: result.moveInDate
-        }).catch(err => console.error('[Email Dispatch] Owner notification email error:', err.message))
+        }).catch(err => console.error('[Email Dispatch] Owner notification email notice:', err?.message))
       }
     } catch (emailErr: any) {
-      console.error('[Email Dispatch System] Non-fatal email error:', emailErr.message)
+      console.error('[Email Dispatch System] Non-fatal email error:', emailErr?.message)
     }
 
     // Revalidate paths
@@ -450,5 +493,229 @@ export async function bookBed(input: BookBedInput) {
   } catch (error: any) {
     console.error('bookBed error:', error)
     return { success: false, error: error.message || 'An error occurred during booking. Please try again.' }
+  }
+}
+
+/**
+ * PHASE 12: Booking Cancellation Action
+ * - Validates ownership/role authorization
+ * - Sets booking status to CANCELLED (never hard deleted)
+ * - Releases Bed inventory back to VACANT
+ * - Updates ResidentStay status to CANCELLED
+ * - Tracks simulated refund status on Payment
+ * - Emits in-app notifications to Resident, Owner, Super Admin
+ * - Dispatches cancellation email events
+ * - Records audit log entry
+ */
+export async function cancelBooking(bookingId: string, reason?: string) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+      return { success: false, error: 'Authentication required. Please sign in.' }
+    }
+
+    const sessionUserId = session.user.id
+    const sessionRole = session.user.role
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        property: {
+          include: { owner: true }
+        },
+        user: true,
+        payments: true
+      }
+    })
+
+    if (!booking) {
+      return { success: false, error: 'Booking not found.' }
+    }
+
+    // Server-side Authorization Check: Resident who booked, Property Owner, or Super Admin
+    const isResident = booking.userId === sessionUserId
+    const isPropertyOwner = booking.property.ownerId === sessionUserId
+    const isSuperAdmin = sessionRole === 'SUPER_ADMIN' || sessionRole === 'INSPECTOR'
+
+    if (!isResident && !isPropertyOwner && !isSuperAdmin) {
+      return { success: false, error: 'Access denied. You are not authorized to cancel this booking.' }
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return { success: false, error: 'This booking is already cancelled.' }
+    }
+
+    // Atomic transaction for cancellation
+    const cancellationResult = await prisma.$transaction(async (tx) => {
+      // 1. Update booking status
+      const updatedBooking = await tx.booking.update({
+        where: { id: bookingId },
+        data: { status: 'CANCELLED' }
+      })
+
+      // 2. Free up bed inventory if bed was assigned
+      let roomNumber = 'N/A'
+      let bedIdentifier = 'N/A'
+      if (booking.bedId) {
+        const bed = await tx.bed.update({
+          where: { id: booking.bedId },
+          data: { status: 'VACANT' },
+          include: { room: true }
+        })
+        bedIdentifier = bed.identifier
+        roomNumber = bed.room.roomNumber
+
+        // Update ResidentStay status
+        await tx.residentStay.updateMany({
+          where: {
+            tenantId: booking.userId,
+            bedId: booking.bedId,
+            status: 'ACTIVE'
+          },
+          data: { status: 'CANCELLED' }
+        })
+      }
+
+      // 3. Update payment with simulated demo refund
+      await tx.payment.updateMany({
+        where: { bookingId },
+        data: {
+          status: 'REFUNDED',
+          metadata: JSON.stringify({
+            simulatedRefund: true,
+            refundStatus: 'SIMULATED_SUCCESS',
+            refundAmount: booking.totalAmount,
+            refundedAt: new Date(),
+            reason: reason || 'Booking cancellation'
+          })
+        }
+      })
+
+      // 4. In-App Notifications
+      // User notification
+      await tx.notification.create({
+        data: {
+          userId: booking.userId,
+          title: `Booking Cancelled at ${booking.property.name} ❌`,
+          message: `Your booking (ID: ${booking.id}) for Room ${roomNumber} (Bed ${bedIdentifier}) has been cancelled. Simulated refund of ₹${booking.totalAmount} processed (DEMO).`,
+          type: 'RENT'
+        }
+      })
+
+      // Owner notification
+      if (booking.property.ownerId) {
+        await tx.notification.create({
+          data: {
+            userId: booking.property.ownerId,
+            title: `Booking Cancelled: Room ${roomNumber} (Bed ${bedIdentifier})`,
+            message: `Resident ${booking.user.name} cancelled booking ${booking.id} at ${booking.property.name}. Bed is now VACANT and available for new bookings.`,
+            type: 'RENT'
+          }
+        })
+      }
+
+      // Super Admin notifications
+      const superAdmins = await tx.user.findMany({
+        where: { role: 'SUPER_ADMIN' },
+        select: { id: true, email: true }
+      })
+
+      if (superAdmins.length > 0) {
+        await tx.notification.createMany({
+          data: superAdmins.map(admin => ({
+            userId: admin.id,
+            title: `⚠️ Booking Cancelled: ${booking.property.name}`,
+            message: `Booking ${booking.id} cancelled by ${session.user.name} (${sessionRole}). Total refund: ₹${booking.totalAmount}.`,
+            type: 'PAYMENT'
+          }))
+        })
+      }
+
+      // 5. Audit Log
+      await tx.auditLog.create({
+        data: {
+          actor: sessionUserId,
+          role: sessionRole,
+          action: 'BOOKING_CANCELLED',
+          entity: 'Booking',
+          entityId: booking.id,
+          details: JSON.stringify({
+            propertyId: booking.propertyId,
+            propertyName: booking.property.name,
+            bedId: booking.bedId,
+            refundAmount: booking.totalAmount,
+            reason: reason || 'User / Owner cancellation'
+          })
+        }
+      })
+
+      return {
+        updatedBooking,
+        roomNumber,
+        bedIdentifier,
+        propertyName: booking.property.name,
+        userEmail: booking.user.email,
+        userName: booking.user.name,
+        ownerEmail: booking.property.owner?.email,
+        ownerName: booking.property.owner?.name || 'PG Owner',
+        superAdminEmails: superAdmins.map(a => a.email)
+      }
+    })
+
+    // 6. Safe Email Events
+    try {
+      const emailService = getEmailService()
+
+      // User email
+      emailService.sendBookingCancellation({
+        toEmail: cancellationResult.userEmail,
+        userName: cancellationResult.userName,
+        propertyName: cancellationResult.propertyName,
+        roomNumber: cancellationResult.roomNumber,
+        bedIdentifier: cancellationResult.bedIdentifier,
+        bookingId,
+        refundAmount: booking.totalAmount,
+        reason: reason || 'Booking cancelled upon request',
+        recipientRole: 'USER'
+      }).catch(err => console.error('[Email Notice] User cancellation email error:', err?.message))
+
+      // Owner email
+      if (cancellationResult.ownerEmail) {
+        emailService.sendBookingCancellation({
+          toEmail: cancellationResult.ownerEmail,
+          userName: cancellationResult.ownerName,
+          propertyName: cancellationResult.propertyName,
+          roomNumber: cancellationResult.roomNumber,
+          bedIdentifier: cancellationResult.bedIdentifier,
+          bookingId,
+          reason: reason || 'Booking cancelled',
+          recipientRole: 'OWNER'
+        }).catch(err => console.error('[Email Notice] Owner cancellation email error:', err?.message))
+      }
+    } catch (emailErr: any) {
+      console.error('[Email Notice] Non-fatal cancellation email error:', emailErr?.message)
+    }
+
+    // Revalidate relevant pages
+    try {
+      revalidatePath(`/pg/${booking.propertyId}`)
+      revalidatePath('/search')
+      revalidatePath('/')
+      revalidatePath('/tenant/dashboard')
+      revalidatePath('/tenant/bookings')
+      revalidatePath('/admin/dashboard')
+      revalidatePath('/admin/rooms')
+      revalidatePath('/admin/tenants')
+      revalidatePath('/super-admin')
+    } catch (_) {}
+
+    return {
+      success: true,
+      message: 'Booking cancelled successfully. Bed inventory has been returned to available status.',
+      data: cancellationResult.updatedBooking
+    }
+  } catch (error: any) {
+    console.error('cancelBooking error:', error)
+    return { success: false, error: error.message || 'Failed to cancel booking.' }
   }
 }

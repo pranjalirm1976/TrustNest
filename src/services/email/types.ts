@@ -120,10 +120,23 @@ export interface InventoryAgreementAcceptedParams {
   dashboardUrl: string
 }
 
+export interface BookingCancellationEmailParams {
+  toEmail: string
+  userName: string
+  propertyName: string
+  roomNumber: string
+  bedIdentifier: string
+  bookingId: string
+  refundAmount?: number
+  reason?: string
+  recipientRole: 'USER' | 'OWNER' | 'SUPER_ADMIN'
+}
+
 export interface EmailService {
   readonly provider: EmailProvider
   sendBookingConfirmationToUser(params: UserBookingConfirmationParams): Promise<EmailResult>
   sendNewBookingNotificationToOwner(params: OwnerNewBookingParams): Promise<EmailResult>
+  sendBookingCancellation(params: BookingCancellationEmailParams): Promise<EmailResult>
   sendPGVerificationSubmitted(params: PGVerificationSubmittedParams): Promise<EmailResult>
   sendPGApproved(params: PGVerificationApprovedParams): Promise<EmailResult>
   sendPGActionRequired(params: PGVerificationActionRequiredParams): Promise<EmailResult>

@@ -36,6 +36,7 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import Real3DViewer from '@/components/3d/Real3DViewer'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 interface SuperAdminDashboardClientProps {
   user: { name?: string | null; email?: string | null }
@@ -232,6 +233,7 @@ export default function SuperAdminDashboardClient({
               <ExternalLink className="w-3 h-3" />
             </Link>
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800 text-xs">
+              <NotificationBell isDarkTheme={true} />
               <span className="text-slate-300 font-bold">{user?.name || 'Pranjali (Super Admin)'}</span>
             </div>
           </div>

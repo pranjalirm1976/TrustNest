@@ -110,6 +110,19 @@ export async function sendChatMessage(input: {
       return { success: false, error: 'Message content cannot be empty.' }
     }
 
+    const thread = await prisma.chatThread.findUnique({
+      where: { id: input.threadId }
+    })
+
+    if (!thread) {
+      return { success: false, error: 'Chat thread not found.' }
+    }
+
+    const isParticipant = thread.userId === session.user.id || thread.ownerId === session.user.id || session.user.role === 'SUPER_ADMIN'
+    if (!isParticipant) {
+      return { success: false, error: 'Access denied. You are not a participant in this conversation.' }
+    }
+
     const message = await prisma.chatMessage.create({
       data: {
         threadId: input.threadId,
