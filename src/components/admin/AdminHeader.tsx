@@ -91,6 +91,17 @@ export function AdminHeader({ user }: AdminHeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* If Super Admin, show direct link button */}
+        {(user.role === 'SUPER_ADMIN' || user.role === 'INSPECTOR') && (
+          <Link 
+            href="/super-admin" 
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm border border-slate-700"
+          >
+            <Shield className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Super Admin Center</span>
+          </Link>
+        )}
+
         {/* Actions */}
         <Link 
           href="/admin/registration" 
@@ -134,6 +145,17 @@ export function AdminHeader({ user }: AdminHeaderProps) {
               </div>
 
               <div className="py-1">
+                {(user.role === 'SUPER_ADMIN' || user.role === 'INSPECTOR') && (
+                  <Link
+                    href="/super-admin"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-indigo-600" />
+                    Super Admin Center
+                  </Link>
+                )}
+
                 <Link
                   href="/admin/settings"
                   onClick={() => setIsDropdownOpen(false)}

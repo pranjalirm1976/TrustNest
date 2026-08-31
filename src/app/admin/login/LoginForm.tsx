@@ -67,14 +67,15 @@ export function LoginForm() {
         setErrors({ general: errorMessage })
       } else if (result?.ok) {
         const session = await getSession()
-        const role = session?.user?.role || (emailToUse.includes('admin') || emailToUse.includes('pranjali') ? 'SUPER_ADMIN' : 'OWNER')
+        const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'INSPECTOR' || emailToUse.includes('admin') || emailToUse.includes('pranjali')
+        const isTenant = session?.user?.role === 'TENANT'
 
-        if (role === 'SUPER_ADMIN') {
-          window.location.href = callbackUrl && callbackUrl.startsWith('/super-admin') ? callbackUrl : '/super-admin'
-        } else if (role === 'TENANT') {
-          window.location.href = callbackUrl && callbackUrl.startsWith('/tenant') ? callbackUrl : '/tenant/dashboard'
+        if (isSuperAdmin) {
+          window.location.href = '/super-admin'
+        } else if (isTenant) {
+          window.location.href = callbackUrl && callbackUrl.startsWith('/tenant') && !callbackUrl.includes('login') ? callbackUrl : '/tenant/dashboard'
         } else {
-          window.location.href = callbackUrl && !callbackUrl.includes('/login') ? callbackUrl : '/admin/dashboard'
+          window.location.href = callbackUrl && !callbackUrl.includes('login') ? callbackUrl : '/admin/dashboard'
         }
       }
     } catch (error) {

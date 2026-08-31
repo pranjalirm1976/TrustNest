@@ -1,5 +1,8 @@
 import { Suspense } from 'react'
 import { Metadata } from 'next'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
 import { LoginForm } from './LoginForm'
 import { Shield, Building2 } from 'lucide-react'
 
@@ -8,7 +11,16 @@ export const metadata: Metadata = {
   description: 'Secure admin portal for TrustNest PG Management System'
 }
 
-export default function AdminLoginPage() {
+export default async function AdminLoginPage() {
+  const session = await getServerSession(authOptions)
+  if (session?.user) {
+    if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'INSPECTOR') {
+      redirect('/super-admin')
+    } else {
+      redirect('/admin/dashboard')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-emerald-900 flex items-center justify-center p-4">
       {/* Background Pattern */}

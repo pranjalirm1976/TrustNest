@@ -24,6 +24,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
+  { name: 'Super Admin Center', href: '/super-admin', icon: ShieldCheck },
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'My PGs', href: '/admin/properties', icon: Building2 },
   { name: 'PG Registration', href: '/admin/registration', icon: FilePlus2 },
