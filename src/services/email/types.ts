@@ -1,5 +1,5 @@
 export type EmailProvider = 'CONSOLE' | 'RESEND' | 'SMTP'
-export type EmailDeliveryStatus = 'PENDING' | 'SENT' | 'FAILED'
+export type EmailDeliveryStatus = 'PENDING' | 'PENDING_PROVIDER' | 'SENT' | 'FAILED'
 
 export interface EmailResult {
   success: boolean
@@ -37,6 +37,20 @@ export interface OwnerNewBookingParams {
   transactionId: string
   amount: number
   ownerPayout: number
+  moveInDate: string
+}
+
+export interface SuperAdminNewBookingParams {
+  adminEmail: string
+  propertyName: string
+  ownerName: string
+  residentName: string
+  roomNumber: string
+  bedIdentifier: string
+  bookingId: string
+  transactionId: string
+  amount: number
+  bookingDate: string
   moveInDate: string
 }
 
@@ -136,6 +150,7 @@ export interface EmailService {
   readonly provider: EmailProvider
   sendBookingConfirmationToUser(params: UserBookingConfirmationParams): Promise<EmailResult>
   sendNewBookingNotificationToOwner(params: OwnerNewBookingParams): Promise<EmailResult>
+  sendNewBookingNotificationToAdmin(params: SuperAdminNewBookingParams): Promise<EmailResult>
   sendBookingCancellation(params: BookingCancellationEmailParams): Promise<EmailResult>
   sendPGVerificationSubmitted(params: PGVerificationSubmittedParams): Promise<EmailResult>
   sendPGApproved(params: PGVerificationApprovedParams): Promise<EmailResult>

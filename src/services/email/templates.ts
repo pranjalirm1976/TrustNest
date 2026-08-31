@@ -54,93 +54,171 @@ function baseEmailWrapper(title: string, contentHtml: string): string {
 }
 
 export function generateUserBookingConfirmationEmail(params: UserBookingConfirmationParams): { subject: string; html: string; text: string } {
-  const subject = `TrustNest Booking Confirmation – ${params.propertyName}`
+  const subject = `TrustNest Booking Confirmed — ${params.propertyName}`
   const html = baseEmailWrapper(
     subject,
     `
-    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">Booking Confirmed! 🎉</h2>
+    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">TrustNest Booking Confirmed! 🎉</h2>
     <p style="font-size: 13px; color: #475569; line-height: 1.6;">
       Hello <strong>${params.userName}</strong>,<br>
-      Your bed reservation at <strong>${params.propertyName}</strong> has been successfully confirmed.
+      Your TrustNest booking has been successfully confirmed.
     </p>
 
     <div class="highlight-box">
-      <div style="margin-bottom: 12px;"><span class="tag tag-demo">Sandbox Demo Payment</span> <span class="tag tag-success">Confirmed</span></div>
+      <div style="margin-bottom: 12px;"><span class="tag tag-success">Payment Status: SUCCESS</span></div>
       <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-        <tr><td style="padding: 4px 0; color: #64748b;">PG Property:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.propertyName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">PG:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.propertyName}</td></tr>
         <tr><td style="padding: 4px 0; color: #64748b;">Address:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.propertyAddress}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Allocated Room &amp; Bed:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Room ${params.roomNumber} (Bed ${params.bedIdentifier})</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Move-In Date:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.moveInDate}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Room:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Room ${params.roomNumber}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Bed:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Bed ${params.bedIdentifier}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Move-in Date:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.moveInDate}</td></tr>
         <tr><td style="padding: 4px 0; color: #64748b;">Booking ID:</td><td style="text-align: right; font-family: monospace; font-weight: bold;">${params.bookingId}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Transaction ID:</td><td style="text-align: right; font-family: monospace; font-weight: bold;">${params.transactionId}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment ID:</td><td style="text-align: right; font-family: monospace; font-weight: bold;">${params.transactionId}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment Status:</td><td style="text-align: right; font-weight: bold; color: #15803d;">SUCCESS</td></tr>
         <tr><td style="padding: 8px 0 0 0; color: #0f172a; font-weight: bold;">Amount Paid:</td><td style="padding: 8px 0 0 0; text-align: right; font-weight: 800; font-size: 16px; color: #0f172a;">₹${params.amount.toLocaleString('en-IN')}</td></tr>
       </table>
     </div>
 
     <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
-      You can view your verified floor layout, daily food audits, and communicate with the owner directly inside your TrustNest dashboard.
+      For assistance, contact TrustNest Support: <strong style="color: #4f46e5;">support@trustnest.in</strong>
     </p>
 
     <div style="text-align: center; margin-top: 24px;">
-      <a href="http://localhost:3000/tenant/dashboard" class="btn">View Resident Dashboard &rarr;</a>
+      <a href="https://trust-nest-one.vercel.app/tenant/dashboard" class="btn">View Resident Dashboard &rarr;</a>
     </div>
     `
   )
 
   const text = `
-TRUSTNEST BOOKING CONFIRMATION
 Hello ${params.userName},
 
-Your stay at ${params.propertyName} is confirmed.
-- Room: ${params.roomNumber} (Bed ${params.bedIdentifier})
-- Move-In: ${params.moveInDate}
-- Booking ID: ${params.bookingId}
-- Txn ID: ${params.transactionId}
-- Amount: ₹${params.amount} (DEMO)
+Your TrustNest booking has been successfully confirmed.
 
-View Dashboard: http://localhost:3000/tenant/dashboard
+Booking Details:
+
+PG: ${params.propertyName}
+Address: ${params.propertyAddress}
+Room: ${params.roomNumber}
+Bed: ${params.bedIdentifier}
+Move-in Date: ${params.moveInDate}
+Booking ID: ${params.bookingId}
+Payment ID: ${params.transactionId}
+Amount Paid: ₹${params.amount}
+Payment Status: SUCCESS
+
+For assistance: support@trustnest.in
 `
   return { subject, html, text }
 }
 
 export function generateOwnerNewBookingEmail(params: OwnerNewBookingParams): { subject: string; html: string; text: string } {
-  const subject = `New TrustNest Booking – Room ${params.roomNumber} (Bed ${params.bedIdentifier})`
+  const subject = `New TrustNest Booking — ${params.propertyName}`
   const html = baseEmailWrapper(
     subject,
     `
-    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">New Resident Booking Received 🔔</h2>
+    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">New TrustNest Booking Received 🔔</h2>
     <p style="font-size: 13px; color: #475569; line-height: 1.6;">
       Hello <strong>${params.ownerName}</strong>,<br>
-      A new resident has successfully reserved a bed at <strong>${params.propertyName}</strong> through TrustNest.
+      A new resident has successfully booked a TrustNest bed in your PG.
     </p>
 
     <div class="highlight-box">
-      <div style="margin-bottom: 12px;"><span class="tag tag-success">New Stay Booked</span></div>
+      <div style="margin-bottom: 12px;"><span class="tag tag-success">Payment Status: SUCCESS</span></div>
       <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-        <tr><td style="padding: 4px 0; color: #64748b;">Resident Name:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Resident:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentName}</td></tr>
         <tr><td style="padding: 4px 0; color: #64748b;">Resident Email:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentEmail}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Contact:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentPhone || 'Via In-App Chat'}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Room &amp; Bed:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Room ${params.roomNumber} - Bed ${params.bedIdentifier}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Move-In Date:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.moveInDate}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Verified Mobile:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentPhone || 'Verified in App'}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">PG:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.propertyName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Room:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Room ${params.roomNumber}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Bed:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Bed ${params.bedIdentifier}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Move-in Date:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.moveInDate}</td></tr>
         <tr><td style="padding: 4px 0; color: #64748b;">Booking ID:</td><td style="text-align: right; font-family: monospace;">${params.bookingId}</td></tr>
-        <tr><td style="padding: 4px 0; color: #64748b;">Booking Total:</td><td style="text-align: right; font-weight: bold;">₹${params.amount.toLocaleString('en-IN')}</td></tr>
-        <tr><td style="padding: 8px 0 0 0; color: #15803d; font-weight: bold;">Owner Net Payout (90%):</td><td style="padding: 8px 0 0 0; text-align: right; font-weight: 800; font-size: 16px; color: #15803d;">₹${params.ownerPayout.toLocaleString('en-IN')}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment ID:</td><td style="text-align: right; font-family: monospace;">${params.transactionId}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment Status:</td><td style="text-align: right; font-weight: bold; color: #15803d;">SUCCESS</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Amount:</td><td style="text-align: right; font-weight: bold;">₹${params.amount.toLocaleString('en-IN')}</td></tr>
+        <tr><td style="padding: 8px 0 0 0; color: #15803d; font-weight: bold;">Net Owner Payout:</td><td style="padding: 8px 0 0 0; text-align: right; font-weight: 800; font-size: 16px; color: #15803d;">₹${params.ownerPayout.toLocaleString('en-IN')}</td></tr>
       </table>
     </div>
 
     <div style="text-align: center; margin-top: 24px;">
-      <a href="http://localhost:3000/admin/payments" class="btn">View Booking &amp; Revenue &rarr;</a>
+      <a href="https://trust-nest-one.vercel.app/admin/tenants" class="btn">View Booking &rarr;</a>
     </div>
     `
   )
 
   const text = `
-TRUSTNEST NEW BOOKING ALERT
 Hello ${params.ownerName},
 
-A new resident (${params.residentName} - ${params.residentEmail}) has booked Room ${params.roomNumber} (Bed ${params.bedIdentifier}) at ${params.propertyName}.
-- Net Owner Payout: ₹${params.ownerPayout}
-- Booking ID: ${params.bookingId}
+A new resident has successfully booked a TrustNest bed in your PG.
+
+Booking Details:
+
+Resident: ${params.residentName}
+Resident Email: ${params.residentEmail}
+Verified Mobile: ${params.residentPhone || 'Verified in App'}
+PG: ${params.propertyName}
+Room: ${params.roomNumber}
+Bed: ${params.bedIdentifier}
+Move-in Date: ${params.moveInDate}
+Booking ID: ${params.bookingId}
+Payment ID: ${params.transactionId}
+Amount: ₹${params.amount}
+Payment Status: SUCCESS
+
+View Booking: https://trust-nest-one.vercel.app/admin/tenants
+`
+  return { subject, html, text }
+}
+
+export function generateSuperAdminNewBookingEmail(params: import('./types').SuperAdminNewBookingParams): { subject: string; html: string; text: string } {
+  const subject = `TrustNest — New Booking Recorded`
+  const html = baseEmailWrapper(
+    subject,
+    `
+    <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">New Booking Recorded 📈</h2>
+    <p style="font-size: 13px; color: #475569; line-height: 1.6;">
+      A new TrustNest booking has been successfully recorded.
+    </p>
+
+    <div class="highlight-box">
+      <div style="margin-bottom: 12px;"><span class="tag tag-success">Payment Status: SUCCESS</span></div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr><td style="padding: 4px 0; color: #64748b;">PG:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.propertyName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Owner:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.ownerName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Resident:</td><td style="text-align: right; font-weight: bold; color: #0f172a;">${params.residentName}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Room:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Room ${params.roomNumber}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Bed:</td><td style="text-align: right; font-weight: bold; color: #4f46e5;">Bed ${params.bedIdentifier}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Booking ID:</td><td style="text-align: right; font-family: monospace;">${params.bookingId}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment ID:</td><td style="text-align: right; font-family: monospace;">${params.transactionId}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Amount:</td><td style="text-align: right; font-weight: bold;">₹${params.amount.toLocaleString('en-IN')}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Payment Status:</td><td style="text-align: right; font-weight: bold; color: #15803d;">SUCCESS</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Booking Date:</td><td style="text-align: right; font-weight: bold;">${params.bookingDate}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Move-in Date:</td><td style="text-align: right; font-weight: bold;">${params.moveInDate}</td></tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="https://trust-nest-one.vercel.app/super-admin" class="btn">View Booking &rarr;</a>
+    </div>
+    `
+  )
+
+  const text = `
+A new TrustNest booking has been successfully recorded.
+
+PG: ${params.propertyName}
+Owner: ${params.ownerName}
+Resident: ${params.residentName}
+Room: ${params.roomNumber}
+Bed: ${params.bedIdentifier}
+Booking ID: ${params.bookingId}
+Payment ID: ${params.transactionId}
+Amount: ₹${params.amount}
+Payment Status: SUCCESS
+Booking Date: ${params.bookingDate}
+Move-in Date: ${params.moveInDate}
+
+View Booking: https://trust-nest-one.vercel.app/super-admin
 `
   return { subject, html, text }
 }

@@ -705,3 +705,24 @@ model OtpVerification {
   @@index([target, type, status])
   @@map("otp_verifications")
 }
+
+model EmailLog {
+  id              String    @id @default(cuid())
+  bookingId       String?
+  idempotencyKey  String    @unique // e.g. "cmth123_USER_BOOKING_CONFIRMATION"
+  recipient       String    // user email, owner email, super admin email
+  recipientType   String    // "USER" | "OWNER" | "SUPER_ADMIN"
+  emailType       String    // "USER_BOOKING_CONFIRMATION" | "OWNER_NEW_BOOKING" | "ADMIN_NEW_BOOKING"
+  subject         String
+  provider        String    // "RESEND" | "CONSOLE" | "PENDING_PROVIDER"
+  status          String    // "SENT" | "PENDING_PROVIDER" | "FAILED"
+  messageId       String?
+  error           String?
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([bookingId])
+  @@index([recipient])
+  @@index([emailType])
+  @@map("email_logs")
+}

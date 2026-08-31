@@ -464,6 +464,22 @@ export async function bookBed(input: BookBedInput) {
           moveInDate: result.moveInDate
         }).catch(err => console.error('[Email Dispatch] Owner notification email notice:', err?.message))
       }
+
+      // Dispatch Super Admin Notification Email
+      const adminRecipient = process.env.SUPER_ADMIN_EMAIL || result.superAdminEmails[0] || 'admin@trustnest.in'
+      emailService.sendNewBookingNotificationToAdmin({
+        adminEmail: adminRecipient,
+        propertyName: result.propertyName,
+        ownerName: result.ownerName,
+        residentName: result.residentName,
+        roomNumber: result.roomNumber,
+        bedIdentifier: result.bedIdentifier,
+        bookingId: result.bookingId,
+        transactionId: result.transactionId,
+        amount: result.rentAmount,
+        bookingDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        moveInDate: result.moveInDate
+      }).catch(err => console.error('[Email Dispatch] Super Admin notification email notice:', err?.message))
     } catch (emailErr: any) {
       console.error('[Email Dispatch System] Non-fatal email error:', emailErr?.message)
     }
