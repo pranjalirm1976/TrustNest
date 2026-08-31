@@ -6,19 +6,27 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
-    // Allow login pages through without checks
-    if (path === '/admin/login' || path === '/tenant/login') {
+    // Allow login pages and public APIs through without checks
+    if (
+      path === '/admin/login' || 
+      path === '/tenant/login' || 
+      path === '/user/login' ||
+      path.startsWith('/api/auth')
+    ) {
       return NextResponse.next()
     }
+
+    const tokenRole = (token?.role as string)?.toUpperCase()
 
     // Super Admin Platform Route Authorization
     if (path.startsWith('/super-admin')) {
       if (!token) {
         return NextResponse.redirect(new URL('/admin/login', req.url))
       }
-      if (token.role !== 'SUPER_ADMIN' && token.role !== 'INSPECTOR') {
+      if (tokenRole !== 'SUPER_ADMIN' && tokenRole !== 'INSPECTOR') {
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
+      return NextResponse.next()
     }
 
     // Admin & PG Owner route authorization
@@ -26,9 +34,10 @@ export default withAuth(
       if (!token) {
         return NextResponse.redirect(new URL('/admin/login', req.url))
       }
-      if (token.role !== 'OWNER' && token.role !== 'PG_OWNER' && token.role !== 'SUPER_ADMIN' && token.role !== 'INSPECTOR') {
+      if (tokenRole !== 'OWNER' && tokenRole !== 'PG_OWNER' && tokenRole !== 'SUPER_ADMIN' && tokenRole !== 'INSPECTOR') {
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
+      return NextResponse.next()
     }
 
     // Tenant / Resident route authorization
@@ -36,9 +45,10 @@ export default withAuth(
       if (!token) {
         return NextResponse.redirect(new URL('/tenant/login', req.url))
       }
-      if (token.role !== 'TENANT' && token.role !== 'USER') {
+      if (tokenRole !== 'TENANT' && tokenRole !== 'USER') {
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
+      return NextResponse.next()
     }
 
     return NextResponse.next()

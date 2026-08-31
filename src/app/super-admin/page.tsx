@@ -19,7 +19,8 @@ export default async function SuperAdminPage() {
     session = await getServerSession(authOptions)
   } catch (_) {}
 
-  if (!session || (session.user?.role !== 'SUPER_ADMIN' && session.user?.role !== 'INSPECTOR')) {
+  const userRole = (session?.user?.role as string)?.toUpperCase()
+  if (!session || (userRole !== 'SUPER_ADMIN' && userRole !== 'INSPECTOR')) {
     redirect('/admin/login')
   }
 

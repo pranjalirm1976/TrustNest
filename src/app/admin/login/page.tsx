@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 export default async function AdminLoginPage() {
   const session = await getServerSession(authOptions)
   if (session?.user) {
-    if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'INSPECTOR') {
+    const role = (session.user.role as string)?.toUpperCase()
+    if (role === 'SUPER_ADMIN' || role === 'INSPECTOR') {
       redirect('/super-admin')
     } else {
       redirect('/admin/dashboard')
