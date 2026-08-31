@@ -57,6 +57,7 @@ export default function DailyMenuCard({ menu }: DailyMenuCardProps) {
           fill
           sizes="(max-w-7xl) 100vw, 300px"
           className="object-cover"
+          unoptimized={foodPhoto.startsWith('/uploads/') || foodPhoto.startsWith('data:')}
         />
 
         {/* Veg indicator badge */}

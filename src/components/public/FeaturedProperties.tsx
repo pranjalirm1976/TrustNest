@@ -81,6 +81,7 @@ export default function FeaturedProperties({ properties }: FeaturedPropertiesPro
                       fill
                       sizes="(max-w-7xl) 100vw, 400px"
                       className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                      unoptimized={coverImage.startsWith('/uploads/') || coverImage.startsWith('data:')}
                     />
                     
                     {/* Floating Badges */}

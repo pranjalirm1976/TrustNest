@@ -434,7 +434,7 @@ export default function SuperAdminDashboardClient({
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden relative shrink-0">
                         {prop.images[0]?.url ? (
-                          <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/')} />
+                          <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/') || prop.images[0].url.startsWith('data:')} />
                         ) : (
                           <Building2 className="w-5 h-5 text-slate-400 m-auto mt-2.5" />
                         )}
@@ -535,7 +535,7 @@ export default function SuperAdminDashboardClient({
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden relative shrink-0">
                               {prop.images[0]?.url ? (
-                                <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/')} />
+                                <Image src={prop.images[0].url} alt={prop.name} fill className="object-cover" unoptimized={prop.images[0].url.startsWith('/uploads/') || prop.images[0].url.startsWith('data:')} />
                               ) : (
                                 <Building2 className="w-4 h-4 text-slate-400 m-auto mt-3" />
                               )}

@@ -238,7 +238,7 @@ export default function InteractiveBlueprint({ property, floors = [], priceFrom 
                 fill
                 priority
                 className="object-contain"
-                unoptimized={floorImageUrl.startsWith('/uploads/')}
+                unoptimized={floorImageUrl.startsWith('/uploads/') || floorImageUrl.startsWith('data:')}
               />
             ) : (
               <div className="text-center p-8 text-slate-400">

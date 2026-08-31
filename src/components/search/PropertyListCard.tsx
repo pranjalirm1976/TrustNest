@@ -56,6 +56,7 @@ export default function PropertyListCard({
           fill
           sizes="(max-w-7xl) 100vw, 240px"
           className="object-cover transition-transform duration-700 hover:scale-105"
+          unoptimized={coverImage.startsWith('/uploads/') || coverImage.startsWith('data:')}
         />
 
         {/* Gender Badge */}

@@ -64,7 +64,7 @@ export default function ImageGallery({ images = [] }: ImageGalleryProps) {
           priority
           sizes="(max-w-7xl) 100vw, 800px"
           className="object-cover transition-transform duration-700 group-hover:scale-[1.01]"
-          unoptimized={mainImage.url.startsWith('/uploads/')}
+          unoptimized={mainImage.url.startsWith('/uploads/') || mainImage.url.startsWith('data:')}
         />
 
         {/* Verified PG Tag */}
@@ -109,7 +109,7 @@ export default function ImageGallery({ images = [] }: ImageGalleryProps) {
               fill
               sizes="(max-w-7xl) 25vw, 300px"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
-              unoptimized={img.url.startsWith('/uploads/')}
+              unoptimized={img.url.startsWith('/uploads/') || img.url.startsWith('data:')}
             />
             {/* Tag Badge */}
             <div className="absolute bottom-3 left-3 z-20 bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1 rounded-xl text-white text-[9px] font-extrabold tracking-wide flex items-center gap-1.5">

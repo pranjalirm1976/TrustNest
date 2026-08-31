@@ -40,6 +40,7 @@ export default function DailyMenuCard({ menu, avgRating, children }: DailyMenuCa
             fill
             sizes="(max-w-7xl) 100vw, 350px"
             className="object-cover"
+            unoptimized={menu.images[0].url.startsWith('/uploads/') || menu.images[0].url.startsWith('data:')}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-1 bg-slate-50">

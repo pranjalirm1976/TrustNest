@@ -97,6 +97,7 @@ export default function MapLayout({
                 alt={activePin.name}
                 fill
                 className="object-cover"
+                unoptimized={activePin.images[0]?.url?.startsWith('/uploads/') || activePin.images[0]?.url?.startsWith('data:')}
               />
             </div>
             

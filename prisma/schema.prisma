@@ -627,7 +627,8 @@ model IdentityVerification {
   id                  String    @id @default(cuid())
   userId              String    @unique
   documentType        String    // "AADHAR" | "PAN" | "PASSPORT" | "DRIVING_LICENSE"
-  documentUrl         String    // Secure file storage
+  documentUrl         String    // Secure file storage or data URI
+  documentData        String?   @db.Text // Base64 encoded document for serverless
   status              String    @default("PENDING") // "PENDING" | "VERIFIED" | "REJECTED"
   verifiedAt          DateTime?
   verifiedBy          String?   // Admin ID
